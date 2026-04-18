@@ -44,7 +44,7 @@ const premiumData = {
     triadSynergy: "あなたの三つの鑑定結果は「再生」というテーマで強く結びついています。西洋占星術の木星の慈愛、四柱推命の甲（木）の成長力、さらにタロットの「運命の輪」。これらが三位一体となることで、あなたの運勢は爆発的な加速を見せるでしょう。今、立ち止まることは退歩と同じです。迷わず輝かしい未来へ、手を伸ばしてください。"
 };
 
-const luckyItems = ["フローライトの原石", "朝陽を浴びた一杯の白湯", "古い洋書風のノート", "ゴールドのしおり"];
+export const luckyItems = ["フローライトの原石", "朝陽を浴びた一杯の白湯", "古い洋書風のノート", "ゴールドのしおり"];
 
 const FateRhythmChart = () => {
     const data = [{ x: 0, y: 70, y2: 40, y3: 60 }, { x: 50, y: 85, y2: 60, y3: 50 }, { x: 100, y: 80, y2: 90, y3: 75 }, { x: 150, y: 95, y2: 70, y3: 90 }, { x: 200, y: 90, y2: 85, y3: 85 }];
@@ -83,7 +83,7 @@ const CelestialIllustration = () => (
 
 const StarField = () => {
     const [stars] = useState(() => [...Array(100)].map((_, i) => ({ id: i, top: `${Math.random() * 100}%`, left: `${Math.random() * 100}%`, size: `${Math.random() * 2 + 1}px`, duration: `${Math.random() * 3 + 2}s` })));
-    return (<div className="star-field">{stars.map(s => <div key={s.id} className="star" style={{top: s.top, left: s.left, width: s.size, height: s.size, '--duration': s.duration}} />)}</div>);
+    return (<div className="star-field">{stars.map(s => <div key={s.id} className="star" style={{top: s.top, left: s.left, width: s.size, height: s.size, '--duration': s.duration} as any} />)}</div>);
 };
 
 function App() {
@@ -130,7 +130,7 @@ function App() {
         setTimeout(() => { setView('premium_result'); }, 2000);
     };
 
-    const TopView = () => (
+    const renderTopView = () => (
         <div className="max-w-md w-full page-enter">
             {hasAccessKey && (
                 <div className="mb-6 flex justify-center">
@@ -163,7 +163,7 @@ function App() {
         </div>
     );
 
-    const LoadingView = () => (
+    const renderLoadingView = () => (
         <div className="text-center page-enter">
             <div className="relative mb-12 flex justify-center">
                 <svg width="200" height="200" viewBox="0 0 100 100" className="magic-circle opacity-40">
@@ -177,7 +177,7 @@ function App() {
         </div>
     );
 
-    const ResultView = () => {
+    const renderResultView = () => {
         const currentFortune = (fortuneData as any)[form.theme];
         return (
             <div className="max-w-2xl w-full page-enter py-10 px-4">
@@ -205,7 +205,7 @@ function App() {
         );
     };
 
-    const PremiumResultView = () => (
+    const renderPremiumResultView = () => (
         <div className="max-w-4xl w-full page-enter py-20 px-6">
             <div className="text-center mb-20">
                 <div className="inline-block px-6 py-2 rounded-full border border-[#D4AF37]/40 text-[#D4AF37] text-[10px] tracking-[0.5em] mb-6 uppercase bg-[#D4AF37]/5">Premium Reading</div>
@@ -241,7 +241,7 @@ function App() {
         </div>
     );
 
-    const PremiumModal = () => (
+    const renderPremiumModal = () => (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm page-enter">
             <div className="glass max-w-sm w-full p-12 rounded-[3rem] text-center border-[#D4AF37] border-2 shadow-[0_0_60px_rgba(212,175,55,0.25)]">
                 <h3 className="text-2xl gold-text font-bold mb-4 uppercase">Unlock Your Destiny</h3>
@@ -257,11 +257,11 @@ function App() {
         <div className="relative min-h-screen flex items-center justify-center bg-[#0B1021]">
             <StarField />
             <main className="relative z-10 w-full flex justify-center items-center">
-              {view === 'top' && <TopView />}
-              {view === 'loading' && <LoadingView />}
-              {view === 'result' && <ResultView />}
-              {view === 'premium_result' && <PremiumResultView />}
-              {showPremiumModal && <PremiumModal />}
+              {view === 'top' && renderTopView()}
+              {view === 'loading' && renderLoadingView()}
+              {view === 'result' && renderResultView()}
+              {view === 'premium_result' && renderPremiumResultView()}
+              {showPremiumModal && renderPremiumModal()}
             </main>
         </div>
     );
