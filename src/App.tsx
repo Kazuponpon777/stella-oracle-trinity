@@ -68,7 +68,6 @@ const FateRhythmChart = ({ seed }: { seed: number }) => {
 
     const gen = (s: number, off: number) =>
         Array.from({ length: steps }, (_, i) => {
-            const t = i / (steps - 1);
             return Math.max(15, Math.min(95, 55 + Math.sin((s + i * 30 + off) * 0.05) * 35 + Math.cos((s + i * 20 + off) * 0.03) * 15));
         });
 
