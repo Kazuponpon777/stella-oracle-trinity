@@ -166,7 +166,6 @@ function App() {
     const [score, setScore] = useState(0);
     const [seed, setSeed] = useState(0);
     const [fortune, setFortune] = useState<any>(null);
-    const [showPremiumModal, setShowPremiumModal] = useState(false);
     const [hasAccessKey, setHasAccessKey] = useState(false);
 
     useEffect(() => {
@@ -252,12 +251,7 @@ function App() {
         }, 1000);
     };
 
-    const unlockPremium = () => {
-        setShowPremiumModal(false);
-        setView('loading');
-        setLoadingText('プレミアム領域にアクセス中...');
-        setTimeout(() => { setView('premium_result'); }, 2000);
-    };
+
 
     const renderTopView = () => (
         <div className="max-w-md w-full page-enter">
@@ -309,8 +303,8 @@ function App() {
     const renderResultView = () => {
         if (!fortune) return null;
         return (
-            <div className="max-w-2xl w-full page-enter py-10 px-4">
-                <div className="text-center mb-12">
+            <div className="max-w-2xl w-full page-enter py-10 px-4 text-center">
+                <div className="mb-12">
                     <h2 className="text-2xl gold-text mb-8 tracking-[0.3em]">あなたの鑑定結果</h2>
                     <div className="flex justify-center mb-6">
                         <div className="relative">
@@ -323,13 +317,11 @@ function App() {
                     </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-                    <div className="glass p-6 rounded-2xl relative overflow-hidden"><span className="absolute -top-2 -right-2 text-4xl opacity-10">🌟</span><h3 className="text-[#D4AF37] text-xs mb-4 uppercase border-b border-[#D4AF37]/30 pb-2">西洋占星術 ({fortune.zodiac.name})</h3><p className="text-sm leading-relaxed text-blue-100/80">{fortune.astrology}</p></div>
-                    <div className="glass p-6 rounded-2xl relative overflow-hidden"><span className="absolute -top-2 -right-2 text-4xl opacity-10">☯️</span><h3 className="text-[#D4AF37] text-xs mb-4 uppercase border-b border-[#D4AF37]/30 pb-2">四柱推命 ({fortune.stem.name})</h3><p className="text-sm leading-relaxed text-purple-100/80">{fortune.bazi}</p></div>
-                    <div className="glass p-6 rounded-2xl relative overflow-hidden"><span className="absolute -top-2 -right-2 text-4xl opacity-10">🃏</span><h3 className="text-[#D4AF37] text-xs mb-4 uppercase border-b border-[#D4AF37]/30 pb-2">タロット</h3><p className="text-xs font-bold text-[#D4AF37] mb-2">{fortune.tarot.name}</p><p className="text-sm leading-relaxed text-indigo-100/80">{fortune.tarot.desc}</p></div>
+                    <div className="glass p-6 rounded-2xl relative overflow-hidden text-left"><span className="absolute -top-2 -right-2 text-4xl opacity-10">🌟</span><h3 className="text-[#D4AF37] text-xs mb-4 uppercase border-b border-[#D4AF37]/30 pb-2">西洋占星術 ({fortune.zodiac.name})</h3><p className="text-sm leading-relaxed text-blue-100/80">{fortune.astrology}</p></div>
+                    <div className="glass p-6 rounded-2xl relative overflow-hidden text-left"><span className="absolute -top-2 -right-2 text-4xl opacity-10">☯️</span><h3 className="text-[#D4AF37] text-xs mb-4 uppercase border-b border-[#D4AF37]/30 pb-2">四柱推命 ({fortune.stem.name})</h3><p className="text-sm leading-relaxed text-purple-100/80">{fortune.bazi}</p></div>
+                    <div className="glass p-6 rounded-2xl relative overflow-hidden text-left"><span className="absolute -top-2 -right-2 text-4xl opacity-10">🃏</span><h3 className="text-[#D4AF37] text-xs mb-4 uppercase border-b border-[#D4AF37]/30 pb-2">タロット</h3><p className="text-xs font-bold text-[#D4AF37] mb-2">{fortune.tarot.name}</p><p className="text-sm leading-relaxed text-indigo-100/80">{fortune.tarot.desc}</p></div>
                 </div>
-                <div className="flex flex-col items-center gap-6">
-                    <button onClick={() => setShowPremiumModal(true)} className="btn-gold px-12 py-5 rounded-full font-bold text-lg animate-pulse">さらに深く、3ヶ月後の運命を知る (プレミアム鑑定へ)</button>
-                </div>
+                <button onClick={() => setView('top')} className="text-[10px] opacity-30 hover:opacity-100 transition-all tracking-[0.4em] uppercase border-b border-white/20 pb-2">Back to Menu</button>
             </div>
         );
     };
@@ -381,18 +373,6 @@ function App() {
         );
     };
 
-    const renderPremiumModal = () => (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm page-enter">
-            <div className="glass max-w-sm w-full p-12 rounded-[3rem] text-center border-[#D4AF37] border-2 shadow-[0_0_60px_rgba(212,175,55,0.25)]">
-                <h3 className="text-2xl gold-text font-bold mb-4 uppercase">Unlock Your Destiny</h3>
-                <p className="text-sm opacity-80 mb-10 font-light">3ヶ月後の全貌を解禁します。</p>
-                <div className="text-4xl font-bold text-white mb-8">¥1,000</div>
-                <button onClick={unlockPremium} className="btn-gold w-full py-5 rounded-full mb-8 text-white font-bold tracking-[0.2em]">今すぐ解禁する</button>
-                <button onClick={() => setShowPremiumModal(false)} className="text-[10px] opacity-40 hover:opacity-100 uppercase tracking-widest">Cancel</button>
-            </div>
-        </div>
-    );
-
     return (
         <div className="relative min-h-screen flex items-center justify-center bg-[#0B1021]">
             <StarField />
@@ -401,7 +381,6 @@ function App() {
                 {view === 'loading' && renderLoadingView()}
                 {view === 'result' && renderResultView()}
                 {view === 'premium_result' && renderPremiumResultView()}
-                {showPremiumModal && renderPremiumModal()}
             </main>
         </div>
     );
