@@ -386,7 +386,7 @@ function App() {
             <div className="glass max-w-sm w-full p-12 rounded-[3rem] text-center border-[#D4AF37] border-2 shadow-[0_0_60px_rgba(212,175,55,0.25)]">
                 <h3 className="text-2xl gold-text font-bold mb-4 uppercase">Unlock Your Destiny</h3>
                 <p className="text-sm opacity-80 mb-10 font-light">3ヶ月後の全貌を解禁します。</p>
-                <div className="text-4xl font-bold text-white mb-8">¥3,200</div>
+                <div className="text-4xl font-bold text-white mb-8">¥1,000</div>
                 <button onClick={unlockPremium} className="btn-gold w-full py-5 rounded-full mb-8 text-white font-bold tracking-[0.2em]">今すぐ解禁する</button>
                 <button onClick={() => setShowPremiumModal(false)} className="text-[10px] opacity-40 hover:opacity-100 uppercase tracking-widest">Cancel</button>
             </div>
