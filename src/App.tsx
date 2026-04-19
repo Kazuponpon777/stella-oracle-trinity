@@ -161,7 +161,14 @@ export const luckyItemsPool = [
 
 function App() {
     const [view, setView] = useState('top'); 
-    const [form, setForm] = useState({ name: '', birthDate: '', birthTime: '', theme: 'general' });
+    const [form, setForm] = useState(() => {
+        const saved = localStorage.getItem('stella_oracle_form');
+        return saved ? JSON.parse(saved) : { name: '', birthDate: '', birthTime: '', theme: 'general' };
+    });
+
+    useEffect(() => {
+        localStorage.setItem('stella_oracle_form', JSON.stringify(form));
+    }, [form]);
     const [loadingText, setLoadingText] = useState('');
     const [score, setScore] = useState(0);
     const [seed, setSeed] = useState(0);
