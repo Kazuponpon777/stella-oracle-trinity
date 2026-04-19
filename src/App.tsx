@@ -198,36 +198,70 @@ const soulMessagePool = [
 // --- Components ---
 
 const FateRhythmChart = ({ seed }: { seed: number }) => {
-    const generateData = (s: number, offset: number) => {
-        const data = [];
-        for (let i = 0; i <= 200; i += 50) {
-            const val = 60 + (Math.sin((s + i + offset) * 0.05) * 30);
-            const val2 = 50 + (Math.cos((s + i * 1.5 + offset) * 0.03) * 35);
-            const val3 = 70 + (Math.sin((s + i * 0.8 + offset) * 0.04) * 20);
-            data.push({ x: i, y: Math.max(30, Math.min(95, val)), y2: Math.max(20, Math.min(98, val2)), y3: Math.max(40, Math.min(90, val3)) });
-        }
-        return data;
-    };
-    
-    const data = generateData(seed, 0);
-    const points = data.map(d => `${d.x},${100 - d.y}`).join(' ');
-    const points2 = data.map(d => `${d.x},${100 - d.y2}`).join(' ');
-    const points3 = data.map(d => `${d.x},${100 - d.y3}`).join(' ');
-    
+    const W = 400, H = 200, PAD = 40, PADR = 20, PADT = 20, PADB = 30;
+    const cw = W - PAD - PADR, ch = H - PADT - PADB;
+    const months = ["現在", "1W", "2W", "3W", "1M", "5W", "6W", "7W", "2M", "9W", "10W", "11W", "3M"];
+    const steps = months.length;
+
+    const gen = (s: number, off: number) =>
+        Array.from({ length: steps }, (_, i) => {
+            const t = i / (steps - 1);
+            return Math.max(15, Math.min(95, 55 + Math.sin((s + i * 30 + off) * 0.05) * 35 + Math.cos((s + i * 20 + off) * 0.03) * 15));
+        });
+
+    const d1 = gen(seed, 0), d2 = gen(seed, 100), d3 = gen(seed, 250);
+
+    const toPath = (vals: number[]) =>
+        vals.map((v, i) => {
+            const x = PAD + (i / (steps - 1)) * cw;
+            const y = PADT + ch - (v / 100) * ch;
+            return `${i === 0 ? 'M' : 'L'}${x},${y}`;
+        }).join(' ');
+
+    const yLabels = [0, 25, 50, 75, 100];
+
     return (
-        <div className="w-full h-48 relative mt-10 p-4 glass rounded-3xl">
-            <div className="absolute top-4 left-6 flex gap-4 text-[10px] tracking-widest text-[#D4AF37]/60">
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#D4AF37]"></span>魂の活力</span>
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-400"></span>金運の波</span>
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-purple-400"></span>愛の共鳴</span>
+        <div className="w-full relative mt-6">
+            <div className="flex justify-center gap-6 mb-4 text-[11px] tracking-widest">
+                <span className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-[#D4AF37]"></span><span className="text-[#D4AF37]/80">魂の活力</span></span>
+                <span className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-blue-400"></span><span className="text-blue-400/80">金運の波</span></span>
+                <span className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-purple-400"></span><span className="text-purple-400/80">愛の共鳴</span></span>
             </div>
-            <svg viewBox="0 0 200 100" className="w-full h-full">
-                <polyline points={points} className="chart-line stroke-[#D4AF37]" strokeDasharray="300" strokeDashoffset="300"><animate attributeName="stroke-dashoffset" from="300" to="0" dur="2s" fill="freeze" /></polyline>
-                <polyline points={points2} className="chart-line stroke-blue-400" opacity="0.6" strokeDasharray="300" strokeDashoffset="300"><animate attributeName="stroke-dashoffset" from="300" to="0" dur="2s" begin="0.5s" fill="freeze" /></polyline>
-                <polyline points={points3} className="chart-line stroke-purple-400" opacity="0.6" strokeDasharray="300" strokeDashoffset="300"><animate attributeName="stroke-dashoffset" from="300" to="0" dur="2s" begin="1s" fill="freeze" /></polyline>
-                {data.map((d, i) => (<circle key={i} cx={d.x} cy={100 - d.y} r="2" className="chart-point" />))}
+            <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ minHeight: '260px' }}>
+                {/* Grid lines */}
+                {yLabels.map(v => {
+                    const y = PADT + ch - (v / 100) * ch;
+                    return <g key={v}>
+                        <line x1={PAD} y1={y} x2={W - PADR} y2={y} stroke="#D4AF37" strokeWidth="0.5" opacity={0.15} />
+                        <text x={PAD - 6} y={y + 3} textAnchor="end" fill="#D4AF37" fontSize="8" opacity={0.5}>{v}</text>
+                    </g>;
+                })}
+                {/* Vertical grid + labels */}
+                {months.map((label, i) => {
+                    const x = PAD + (i / (steps - 1)) * cw;
+                    return <g key={i}>
+                        <line x1={x} y1={PADT} x2={x} y2={PADT + ch} stroke="#D4AF37" strokeWidth="0.3" opacity={0.1} />
+                        <text x={x} y={H - 6} textAnchor="middle" fill="#D4AF37" fontSize="8" opacity={0.5}>{label}</text>
+                    </g>;
+                })}
+                {/* Area fills */}
+                <path d={`${toPath(d1)} L${W - PADR},${PADT + ch} L${PAD},${PADT + ch} Z`} fill="url(#goldGrad)" opacity={0.1} />
+                <path d={`${toPath(d2)} L${W - PADR},${PADT + ch} L${PAD},${PADT + ch} Z`} fill="url(#blueGrad)" opacity={0.06} />
+                <defs>
+                    <linearGradient id="goldGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#D4AF37" /><stop offset="100%" stopColor="#D4AF37" stopOpacity={0} /></linearGradient>
+                    <linearGradient id="blueGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#60A5FA" /><stop offset="100%" stopColor="#60A5FA" stopOpacity={0} /></linearGradient>
+                </defs>
+                {/* Lines */}
+                <path d={toPath(d1)} fill="none" stroke="#D4AF37" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="800" strokeDashoffset="800"><animate attributeName="stroke-dashoffset" from="800" to="0" dur="2s" fill="freeze" /></path>
+                <path d={toPath(d2)} fill="none" stroke="#60A5FA" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.7" strokeDasharray="800" strokeDashoffset="800"><animate attributeName="stroke-dashoffset" from="800" to="0" dur="2s" begin="0.4s" fill="freeze" /></path>
+                <path d={toPath(d3)} fill="none" stroke="#C084FC" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.7" strokeDasharray="800" strokeDashoffset="800"><animate attributeName="stroke-dashoffset" from="800" to="0" dur="2s" begin="0.8s" fill="freeze" /></path>
+                {/* Data points for gold line */}
+                {d1.map((v, i) => {
+                    const x = PAD + (i / (steps - 1)) * cw;
+                    const y = PADT + ch - (v / 100) * ch;
+                    return <g key={i}><circle cx={x} cy={y} r="4" fill="#0B1021" stroke="#D4AF37" strokeWidth="2" opacity={0}><animate attributeName="opacity" from="0" to="1" dur="0.3s" begin={`${1.5 + i * 0.1}s`} fill="freeze" /></circle></g>;
+                })}
             </svg>
-            <div className="absolute bottom-2 left-0 w-full flex justify-between px-6 text-[8px] opacity-40 uppercase tracking-[0.2em]"><span>Now</span><span>1 Month</span><span>2 Months</span><span>3 Months</span></div>
         </div>
     );
 };
@@ -599,17 +633,73 @@ function App() {
 
                     {/* Section 5: Tarot Deep */}
                     <section>
-                        <h3 className="flex items-center gap-4 text-[#D4AF37] text-xs tracking-[0.4em] mb-8 uppercase"><span className="w-12 h-px bg-[#D4AF37]"></span>タロット深層リーディング — {fortune.tarot.name}</h3>
+                        <h3 className="flex items-center gap-4 text-[#D4AF37] text-xs tracking-[0.4em] mb-8 uppercase"><span className="w-12 h-px bg-[#D4AF37]"></span>タロット深層リーディング</h3>
+                        {/* Main Tarot Card */}
+                        <div className="flex justify-center mb-12">
+                            <div className="relative w-[220px] group" style={{ perspective: '800px' }}>
+                                <div className="rounded-2xl overflow-hidden border-2 border-[#D4AF37] shadow-[0_0_40px_rgba(212,175,55,0.2)] transition-transform duration-500 group-hover:scale-105" style={{ background: 'linear-gradient(170deg, #1a1535 0%, #0d0b1a 40%, #1a1535 100%)' }}>
+                                    {/* Card ornament top */}
+                                    <div className="flex justify-center pt-4">
+                                        <svg width="60" height="20" viewBox="0 0 60 20" fill="none"><path d="M0 10 Q15 0 30 10 Q45 20 60 10" stroke="#D4AF37" strokeWidth="1" opacity="0.5" /><circle cx="30" cy="10" r="3" fill="#D4AF37" opacity="0.6" /></svg>
+                                    </div>
+                                    {/* Card number */}
+                                    <div className="text-center mt-2">
+                                        <span className="text-[10px] opacity-40 tracking-[0.3em] uppercase">Arcana {(seed % 22)}</span>
+                                    </div>
+                                    {/* Main symbol */}
+                                    <div className="flex justify-center py-6">
+                                        <div className="w-24 h-24 rounded-full border-2 border-[#D4AF37]/40 flex items-center justify-center" style={{ background: 'radial-gradient(circle, rgba(212,175,55,0.15) 0%, transparent 70%)' }}>
+                                            <svg width="50" height="50" viewBox="0 0 100 100" fill="none">
+                                                <polygon points="50,5 61,35 95,35 68,57 79,90 50,70 21,90 32,57 5,35 39,35" stroke="#D4AF37" strokeWidth="2" fill="rgba(212,175,55,0.1)" />
+                                                <circle cx="50" cy="50" r="15" stroke="#D4AF37" strokeWidth="1" fill="none" opacity="0.4" />
+                                            </svg>
+                                        </div>
+                                    </div>
+                                    {/* Card name */}
+                                    <div className="text-center pb-2">
+                                        <div className="text-lg font-bold gold-text tracking-wider leading-tight px-4">{fortune.tarot.name}</div>
+                                    </div>
+                                    {/* Divider */}
+                                    <div className="flex justify-center py-2"><div className="w-2/3 h-px bg-[#D4AF37]/30"></div></div>
+                                    {/* Card description */}
+                                    <div className="px-6 pb-4">
+                                        <p className="text-[11px] leading-relaxed text-center opacity-70 italic">{fortune.tarot.desc}</p>
+                                    </div>
+                                    {/* Card ornament bottom */}
+                                    <div className="flex justify-center pb-4">
+                                        <svg width="60" height="20" viewBox="0 0 60 20" fill="none"><path d="M0 10 Q15 20 30 10 Q45 0 60 10" stroke="#D4AF37" strokeWidth="1" opacity="0.5" /><circle cx="30" cy="10" r="3" fill="#D4AF37" opacity="0.6" /></svg>
+                                    </div>
+                                    {/* Corner ornaments */}
+                                    <div className="absolute top-2 left-2 w-4 h-4 border-t border-l border-[#D4AF37]/40"></div>
+                                    <div className="absolute top-2 right-2 w-4 h-4 border-t border-r border-[#D4AF37]/40"></div>
+                                    <div className="absolute bottom-2 left-2 w-4 h-4 border-b border-l border-[#D4AF37]/40"></div>
+                                    <div className="absolute bottom-2 right-2 w-4 h-4 border-b border-r border-[#D4AF37]/40"></div>
+                                </div>
+                            </div>
+                        </div>
+                        {/* Three timeline cards */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             {[
-                                { label: "過去の魂", icon: "🌙", text: p.tarotDeep.past },
-                                { label: "現在の波動", icon: "☀️", text: p.tarotDeep.present },
-                                { label: "未来の予兆", icon: "⭐", text: p.tarotDeep.future }
+                                { label: "過去の魂", icon: "🌙", roman: "I", text: p.tarotDeep.past, gradient: 'from-indigo-900/20 to-transparent' },
+                                { label: "現在の波動", icon: "☀️", roman: "II", text: p.tarotDeep.present, gradient: 'from-amber-900/20 to-transparent' },
+                                { label: "未来の予兆", icon: "⭐", roman: "III", text: p.tarotDeep.future, gradient: 'from-purple-900/20 to-transparent' }
                             ].map((t, i) => (
-                                <div key={i} className="glass p-8 rounded-3xl border-[#D4AF37]/20 border hover:border-[#D4AF37]/60 transition-all text-left">
-                                    <div className="text-3xl mb-4">{t.icon}</div>
-                                    <h4 className="text-[#D4AF37] text-xs mb-4 uppercase tracking-widest">{t.label}</h4>
-                                    <p className="text-sm leading-relaxed opacity-80">{t.text}</p>
+                                <div key={i} className="relative overflow-hidden rounded-2xl border border-[#D4AF37]/30 hover:border-[#D4AF37]/70 transition-all duration-300 text-left group" style={{ background: 'linear-gradient(180deg, rgba(26,21,53,0.8) 0%, rgba(11,16,33,0.9) 100%)' }}>
+                                    {/* Card corner decorations */}
+                                    <div className="absolute top-1 left-1 w-3 h-3 border-t border-l border-[#D4AF37]/30"></div>
+                                    <div className="absolute top-1 right-1 w-3 h-3 border-t border-r border-[#D4AF37]/30"></div>
+                                    <div className="absolute bottom-1 left-1 w-3 h-3 border-b border-l border-[#D4AF37]/30"></div>
+                                    <div className="absolute bottom-1 right-1 w-3 h-3 border-b border-r border-[#D4AF37]/30"></div>
+                                    {/* Roman numeral */}
+                                    <div className="absolute top-3 right-4 text-[#D4AF37]/15 text-5xl font-bold" style={{ fontFamily: 'serif' }}>{t.roman}</div>
+                                    <div className="p-8">
+                                        <div className="flex items-center gap-3 mb-5">
+                                            <div className="w-10 h-10 rounded-full border border-[#D4AF37]/40 flex items-center justify-center text-xl" style={{ background: 'radial-gradient(circle, rgba(212,175,55,0.1), transparent)' }}>{t.icon}</div>
+                                            <h4 className="text-[#D4AF37] text-xs uppercase tracking-[0.3em] font-bold">{t.label}</h4>
+                                        </div>
+                                        <div className="w-full h-px bg-[#D4AF37]/20 mb-5"></div>
+                                        <p className="text-sm leading-[1.9] opacity-80">{t.text}</p>
+                                    </div>
                                 </div>
                             ))}
                         </div>
