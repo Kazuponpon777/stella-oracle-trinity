@@ -1,56 +1,124 @@
 import { useState, useEffect } from 'react'
 
-// Data Mockups
-const fortuneData = {
-    general: {
-        astrology: "木星があなたの第十室を照らしています。これまでの努力が形となり、社会的な評価が高まる時期です。",
-        bazi: "「庚（かのえ）」の気が強まり、決断力が研ぎ澄まされます。迷わず突き進むことで運気が開けます。",
-        tarot: { name: "運命の輪 (Wheel of Fortune)", desc: "好転のチャンスが到来しています。変化を恐れず、その波に乗ってください。" }
-    },
-    love: {
-        astrology: "金星の影響により、あなたの魅力が最大化されています。意外な人物からのアプローチがあるかもしれません。",
-        bazi: "「癸（みずのと）」の浄化作用により、過去の呪縛から解き放たれ、新しい愛が芽生える予感です。",
-        tarot: { name: "恋人 (The Lovers)", desc: "直感を信じて選ぶことが成功の鍵。心からの調和を感じられる完璧な出会いが近づいています。" }
-    },
-    work: {
-        astrology: "火星が行動力をブーストさせています。リーダーシップを発揮することで、プロジェクトを成功に導けるでしょう。",
-        bazi: "「甲（きのえ）」の成長運。新しいスキルを学ぶことで、将来的な大きな収入源が確保されます。",
-        tarot: { name: "皇帝 (The Emperor)", desc: "基盤を固める時。あなたの確固たる信念が、周囲を動かし大きな成果を生みます。" }
+// --- Utility Functions ---
+
+const hashCode = (str: string) => {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash; // Convert to 32bit integer
     }
+    return Math.abs(hash);
 };
 
-const premiumData = {
-    intro: `今のあなたは、人生の大きな転換期の入り口に立っています。西洋占星術で見れば、土星の回帰が一段落し、魂が新しいサイクルを求めています。四柱推命においては、これまであなたを縛っていた「偏官」の厳しさが和らぎ、自由な表現を司る「食神」の気が巡り始めました。この二つの聖なる流れを統合した鑑定から、あなたの輝かしい未来を解き明かします。`,
-    monthly: [
-        { 
-            month: "1ヶ月目", title: "胎動 - 内なる覚醒", 
-            desc: "環境に微細な変化が現れます。これまで当たり前だと思っていたルーチンに違和感を感じ始めるでしょう。それは魂が「本来の居場所」への移動を望んでいる証拠です。対人関係では、古い知人から意外なビジネス、あるいはプライベート、いずれかの重大な提案が舞い込む暗示があります。恐れずに聞き、心に留めておいてください。" 
-        },
-        { 
-            month: "2ヶ月目", title: "開花 - 青き光の顕現", 
-            desc: "周囲からの助力が最大化し、あなたの提案が「神託」のように受け入れられる時期です。特にクリエイティブな分野や、誰かを導く役割において、比類なきリーダーシップを発揮するでしょう。金星が幸運の角度を形成するため、金銭的なボーナスや予期せぬ評価の向上が期待できます。自分自身の感性を疑わず、直感に従って行動するのが正解です。" 
-        },
-        { 
-            month: "3ヶ月目", title: "収穫 - 黄金の果実", 
-            desc: "驚くべき成果が手元に残ります。単なる成功ではなく、あなたの人生観を書き換えるほどの深い満足感を得るでしょう。この時期の出会いは「ソウルメイト」との繋がりが強く、生涯を通じて支え合えるパートナー、あるいは師となる人物との絆が確定します。手に入れた豊かさを分かち合うことで、この幸運のサイクルは永遠のものとなります。" 
+const getZodiacSign = (dateStr: string) => {
+    if (!dateStr) return { name: "星の導き", element: "光" };
+    const date = new Date(dateStr);
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    
+    const signs = [
+        { name: "山羊座", start: [12, 22], end: [1, 19], element: "土" },
+        { name: "水瓶座", start: [1, 20], end: [2, 18], element: "風" },
+        { name: "魚座", start: [2, 19], end: [3, 20], element: "水" },
+        { name: "牡羊座", start: [3, 21], end: [4, 19], element: "火" },
+        { name: "牡牛座", start: [4, 20], end: [5, 20], element: "土" },
+        { name: "双子座", start: [5, 21], end: [6, 21], element: "風" },
+        { name: "蟹座", start: [6, 22], end: [7, 22], element: "水" },
+        { name: "獅子座", start: [7, 23], end: [8, 22], element: "火" },
+        { name: "乙女座", start: [8, 23], end: [9, 22], element: "土" },
+        { name: "天秤座", start: [9, 23], end: [10, 23], element: "風" },
+        { name: "蠍座", start: [10, 24], end: [11, 22], element: "水" },
+        { name: "射手座", start: [11, 23], end: [12, 21], element: "火" }
+    ];
+
+    const sign = signs.find(s => {
+        if (s.name === "山羊座" && (month === 12 || month === 1)) {
+            return (month === 12 && day >= 22) || (month === 1 && day <= 19);
         }
-    ],
-    destinyPartner: {
-        profile: "知的な眼差しを持ち、沈黙さえも心地よく感じさせる穏やかな人物。専門職や教育、あるいは伝統を重んじる分野で活躍しています。彼（彼女）は、あなたがまだ気づいていない「本当の才能」を一目で見抜き、それを引き出す鍵となるでしょう。年齢はあなたに近いか、少しだけ年上の可能性があります。",
-        location: "「水」と「知」の気配が混ざり合う場所。具体的には、静かな噴水のある公立図書館、歴史的な回廊、あるいは最新のテクノロジーと伝統美が融合した建築物の中。そこで青い小物を身につけている人物に注目してください。",
-        trigger: "共通の「理想」について語り合う機会が訪れます。形式的な会話ではなく、あなたが心底情熱を注いでいることについて語る時、二人の魂は共鳴し始めます。"
-    },
-    wealthAdvice: "金運においては、今まさに「浄化」のフェーズです。不要なサブスクリプション、使っていない高級品、そして「安物買いの習慣」を捨てることで、本物の富が流れ込む空位を創り出してください。特に5月15日から22日の間、北西の方角から届く情報に、数年後の資産価値を一変させるヒントが含まれています。直感的に「本物」だと感じるものにのみ、エネルギーを投資してください。",
-    triadSynergy: "あなたの三つの鑑定結果は「再生」というテーマで強く結びついています。西洋占星術の木星の慈愛、四柱推命の甲（木）の成長力、さらにタロットの「運命の輪」。これらが三位一体となることで、あなたの運勢は爆発的な加速を見せるでしょう。今、立ち止まることは退歩と同じです。迷わず輝かしい未来へ、手を伸ばしてください。"
+        return (month === s.start[0] && day >= s.start[1]) || (month === s.end[0] && day <= s.end[1]);
+    }) || signs[0];
+
+    return sign;
 };
 
-export const luckyItems = ["フローライトの原石", "朝陽を浴びた一杯の白湯", "古い洋書風のノート", "ゴールドのしおり"];
+const getTenStem = (year: number) => {
+    const stems = ["甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"];
+    const elements = ["木", "木", "火", "火", "土", "土", "金", "金", "水", "水"];
+    const idx = (year - 4) % 10;
+    const stemIdx = idx < 0 ? idx + 10 : idx;
+    return { name: stems[stemIdx], element: elements[stemIdx] };
+};
 
-const FateRhythmChart = () => {
-    const data = [{ x: 0, y: 70, y2: 40, y3: 60 }, { x: 50, y: 85, y2: 60, y3: 50 }, { x: 100, y: 80, y2: 90, y3: 75 }, { x: 150, y: 95, y2: 70, y3: 90 }, { x: 200, y: 90, y2: 85, y3: 85 }];
+const tarotCards = [
+    { name: "愚者 (The Fool)", desc: "新しい始まり、自由、無限の可能性。恐れずに一歩踏み出しましょう。" },
+    { name: "魔術師 (The Magician)", desc: "創造力、意志の力、スキルの開花。あなたはすでに必要なものをすべて持っています。" },
+    { name: "女教皇 (The High Priestess)", desc: "直感、神秘、静寂。心の声に耳を傾けることで、真実が見えてきます。" },
+    { name: "女帝 (The Empress)", desc: "豊穣、母性、愛。周囲からの恵みを受け入れ、育む時期です。" },
+    { name: "皇帝 (The Emperor)", desc: "権威、秩序、安定。確固たる目標を持ち、自らの足で立つことが成功への道です。" },
+    { name: "教皇 (The Hierophant)", desc: "精神性、守護、導き。伝統や信頼できるアドバイスがあなたを助けます。" },
+    { name: "恋人 (The Lovers)", desc: "調和、選択、深い結びつき。心に従う選択が、最高の未来を引き寄せます。" },
+    { name: "戦車 (The Chariot)", desc: "勝利、前進、自制心。強い意志を持って突き進めば、どんな壁も超えられます。" },
+    { name: "力 (Strength)", desc: "忍耐、慈しみ、内なる強さ。力づくではなく、優しさで状況をコントロールできます。" },
+    { name: "隠者 (The Hermit)", desc: "内省、慎重、真理の探求。一人の時間を作り、自分自身と向き合う時です。" },
+    { name: "運命の輪 (Wheel of Fortune)", desc: "好転、変化、運命の転換。チャンスの波が訪れています。迷わず乗ってください。" },
+    { name: "正義 (Justice)", desc: "均衡、公正、真実。正しい判断ができる時です。誠実さが報われます。" },
+    { name: "吊るされた男 (The Hanged Man)", desc: "修行、視点の転換。一見停滞していても、それは魂が成長するための貴重な時間です。" },
+    { name: "死神 (Death)", desc: "終焉と再生。古いものを脱ぎ捨て、新しい自分へと生まれ変わる好機です。" },
+    { name: "節制 (Temperance)", desc: "調和、癒し、中庸。異なる要素が混ざり合い、新しい価値が生まれる兆しです。" },
+    { name: "悪魔 (The Devil)", desc: "執着、誘惑。自分を縛っている依存心に気づき、解放されるタイミングです。" },
+    { name: "塔 (The Tower)", desc: "電撃的な変化、崩壊と真実。殻を破ることで、より強固な基盤が築かれます。" },
+    { name: "星 (The Star)", desc: "希望、インスピレーション、浄化. あなたの願いは天に届き、静かな光が道を照らします。" },
+    { name: "月 (The Moon)", desc: "不安、潜在意識、幻想。曖昧な状況こそが、あなたの感受性を磨いてくれます。" },
+    { name: "太陽 (The Sun)", desc: "成功、祝福、活力。すべてが明るく照らされ、幸福感に満たされる時期です。" },
+    { name: "審判 (Judgement)", desc: "復活、覚醒、報い。過去の努力が認められ、新しいステージへと召還されます。" },
+    { name: "世界 (The World)", desc: "完成、統合、新章の始まり。あなたの旅は一つの頂点に達し、完璧な調和が訪れます。" }
+];
+
+const astrologyPool = {
+    general: [
+        "木星があなたの第十室を照らしています。これまでの努力が形となり、社会的な評価が高まる時期です。",
+        "土星の厳しい影響が抜け、自由な風が吹き始めています。型にハマらない行動が幸運の鍵となります。",
+        "天王星が革新的なエネルギーを注いでいます。突然の閃きや、新しいテクノロジーとの出会いが道を開きます。"
+    ],
+    love: [
+        "金星の影響により、あなたの魅力が最大化されています。意外な人物からのアプローチがあるかもしれません。",
+        "海王星が夢見心地な出会いを演出します。言葉を超えた深い共鳴を感じる相手が現れる暗示です。",
+        "火星が情熱に火をつけます。奥手だった自分を捨て、ストレートな表現をすることで心が通じ合うでしょう。"
+    ],
+    work: [
+        "水星が知性を研ぎ澄ませています。交渉や情報の整理において、あなたの右に出る者はいません。",
+        "太陽があなたのキャリアを力強くバックアップしています。リーダーシップを発揮することで周囲を導けます。",
+        "冥王星が根本的な変容を求めています。今の仕事のスタイルを大胆に変えることで、真の才能が覚醒します。"
+    ]
+};
+
+const baziPool = [
+    "「{stem}」の気が強まり、{element}の性質があなたの行動をサポートします。揺るぎない信念を持つことで運気が安定します。",
+    "「{stem}」の浄化作用により、過去の呪縛から解き放たれます。軽やかな心で、新しい一歩を踏み出す時です。",
+    "「{stem}」の成長運。{element}のように高く伸びゆくエネルギーが満ちており、新しいスキルの習得が大きな実を結びます。"
+];
+
+// --- Components ---
+
+const FateRhythmChart = ({ seed }: { seed: number }) => {
+    const generateData = (s: number, offset: number) => {
+        const data = [];
+        for (let i = 0; i <= 200; i += 50) {
+            const val = 60 + (Math.sin((s + i + offset) * 0.05) * 30);
+            const val2 = 50 + (Math.cos((s + i * 1.5 + offset) * 0.03) * 35);
+            const val3 = 70 + (Math.sin((s + i * 0.8 + offset) * 0.04) * 20);
+            data.push({ x: i, y: Math.max(30, Math.min(95, val)), y2: Math.max(20, Math.min(98, val2)), y3: Math.max(40, Math.min(90, val3)) });
+        }
+        return data;
+    };
+    
+    const data = generateData(seed, 0);
     const points = data.map(d => `${d.x},${100 - d.y}`).join(' ');
     const points2 = data.map(d => `${d.x},${100 - d.y2}`).join(' ');
     const points3 = data.map(d => `${d.x},${100 - d.y3}`).join(' ');
+    
     return (
         <div className="w-full h-48 relative mt-10 p-4 glass rounded-3xl">
             <div className="absolute top-4 left-6 flex gap-4 text-[10px] tracking-widest text-[#D4AF37]/60">
@@ -86,11 +154,18 @@ const StarField = () => {
     return (<div className="star-field">{stars.map(s => <div key={s.id} className="star" style={{top: s.top, left: s.left, width: s.size, height: s.size, '--duration': s.duration} as any} />)}</div>);
 };
 
+export const luckyItemsPool = [
+    "フローライトの原石", "朝陽を浴びた一杯の白湯", "古い洋書風のノート", "ゴールドのしおり",
+    "ラベンダーのアロマオイル", "星空のポストカード", "シルクのナイトキャップ", "銀のティースプーン"
+];
+
 function App() {
     const [view, setView] = useState('top'); 
-    const [form, setForm] = useState({ name: '', birthDate: '', theme: 'general' });
+    const [form, setForm] = useState({ name: '', birthDate: '', birthTime: '', theme: 'general' });
     const [loadingText, setLoadingText] = useState('');
     const [score, setScore] = useState(0);
+    const [seed, setSeed] = useState(0);
+    const [fortune, setFortune] = useState<any>(null);
     const [showPremiumModal, setShowPremiumModal] = useState(false);
     const [hasAccessKey, setHasAccessKey] = useState(false);
 
@@ -101,7 +176,60 @@ function App() {
         }
     }, []);
 
+    const generateFortune = (currentSeed: number, theme: string) => {
+        const zodiac = getZodiacSign(form.birthDate);
+        const birthYear = form.birthDate ? new Date(form.birthDate).getFullYear() : 2000;
+        const stem = getTenStem(birthYear);
+        
+        // Use seed to pick items from pools
+        const astrology = (astrologyPool as any)[theme][currentSeed % 3];
+        const baziBase = baziPool[currentSeed % 3];
+        const bazi = baziBase.replace("{stem}", stem.name).replace("{element}", stem.element);
+        const tarot = tarotCards[currentSeed % 22];
+
+        // Unique premium parts
+        const luckyItems = [
+            luckyItemsPool[currentSeed % 8],
+            luckyItemsPool[(currentSeed + 1) % 8]
+        ];
+
+        return {
+            astrology: `${zodiac.name}のあなたへ。${astrology}`,
+            bazi,
+            tarot,
+            luckyItems,
+            zodiac,
+            stem,
+            premium: {
+                intro: `今の${form.name}様は、人生の大きな転換期の入り口に立っています。${zodiac.name}の守護星の影響により、魂が新しいサイクルを求めています。四柱推命においては、${stem.name}の気が巡り始め、${stem.element}のエネルギーが道を開きます。この二つの聖なる流れを統合した鑑定から、あなたの輝かしい未来を解き明かします。`,
+                monthly: [
+                    { 
+                        month: "1ヶ月目", title: "胎動 - 内なる覚醒", 
+                        desc: "環境に微細な変化が現れます。これまで当たり前だと思っていたルーチンに違和感を感じ始めるでしょう。それは魂が「本来の居場所」への移動を望んでいる証拠です。対人関係では、古い知人から意外な提案が舞い込む暗示があります。" 
+                    },
+                    { 
+                        month: "2ヶ月目", title: "開花 - 青き光の顕現", 
+                        desc: "周囲からの助力が最大化し、あなたの提案が「神託」のように受け入れられる時期です。特に${theme === 'work' ? '仕事の効率' : '心の調律'}において、比類なきセンスを発揮するでしょう。幸運の角度を形成するため、期待以上の好転が期待できます。" 
+                    },
+                    { 
+                        month: "3ヶ月目", title: "収穫 - 黄金の果実", 
+                        desc: "驚くべき成果が手元に残ります。単なる成功ではなく、あなたの人生観を書き換えるほどの深い満足感を得るでしょう。この時期の出会いは、生涯を通じて支え合える絆が確定します。手に入れた豊かさを分かち合うことで、この幸運のサイクルは永遠のものとなります。" 
+                    }
+                ]
+            }
+        };
+    };
+
     const startFortune = () => {
+        if (!form.name || !form.birthDate) {
+            alert('お名前と生年月日を入力してください。');
+            return;
+        }
+        
+        const generatedSeed = hashCode(form.name + form.birthDate + form.birthTime);
+        setSeed(generatedSeed);
+        setFortune(generateFortune(generatedSeed, form.theme));
+        
         setView('loading');
         const messages = ["天体の配置を解析中...", "深層命式を算出中...", "タロットの深淵へアクセス中...", "運命の糸を統合しています..."];
         let i = 0;
@@ -112,7 +240,8 @@ function App() {
             } else {
                 clearInterval(interval);
                 setTimeout(() => {
-                    setScore(Math.floor(Math.random() * 30) + 70);
+                    const calculatedScore = 70 + (generatedSeed % 28);
+                    setScore(calculatedScore);
                     if (hasAccessKey) {
                         setView('premium_result');
                     } else {
@@ -150,13 +279,13 @@ function App() {
             <div className="glass rounded-[2rem] p-8 space-y-6">
                 <input type="text" placeholder="お名前" className="w-full bg-white/5 border border-white/10 p-4 rounded-xl focus:outline-none focus:border-[#D4AF37]" value={form.name} onChange={(e) => setForm({...form, name: e.target.value})} />
                 <div className="grid grid-cols-2 gap-4">
-                    <input type="date" className="bg-white/5 border border-white/10 p-4 rounded-xl text-sm" />
-                    <input type="time" className="bg-white/5 border border-white/10 p-4 rounded-xl text-sm" />
+                    <input type="date" className="bg-white/5 border border-white/10 p-4 rounded-xl text-sm" value={form.birthDate} onChange={(e) => setForm({...form, birthDate: e.target.value})} />
+                    <input type="time" className="bg-white/5 border border-white/10 p-4 rounded-xl text-sm" value={form.birthTime} onChange={(e) => setForm({...form, birthTime: e.target.value})} />
                 </div>
-                <select className="w-full bg-white/5 border border-white/10 p-4 rounded-xl appearance-none cursor-pointer" onChange={(e: any) => setForm({...form, theme: e.target.value})}>
+                <select className="w-full bg-white/5 border border-white/10 p-4 rounded-xl appearance-none cursor-pointer" value={form.theme} onChange={(e: any) => setForm({...form, theme: e.target.value})}>
                     <option value="general">総合運勢</option>
                     <option value="love">情熱と恋愛</option>
-                    <option value="work">天職と成功</option>
+                    <option value="work">天職業と成功</option>
                 </select>
                 <button onClick={startFortune} className="btn-gold w-full py-5 rounded-full font-bold tracking-widest text-lg">運命を視る</button>
             </div>
@@ -178,7 +307,7 @@ function App() {
     );
 
     const renderResultView = () => {
-        const currentFortune = (fortuneData as any)[form.theme];
+        if (!fortune) return null;
         return (
             <div className="max-w-2xl w-full page-enter py-10 px-4">
                 <div className="text-center mb-12">
@@ -194,9 +323,9 @@ function App() {
                     </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-                    <div className="glass p-6 rounded-2xl relative overflow-hidden"><span className="absolute -top-2 -right-2 text-4xl opacity-10">🌟</span><h3 className="text-[#D4AF37] text-xs mb-4 uppercase border-b border-[#D4AF37]/30 pb-2">西洋占星術</h3><p className="text-sm leading-relaxed text-blue-100/80">{currentFortune.astrology}</p></div>
-                    <div className="glass p-6 rounded-2xl relative overflow-hidden"><span className="absolute -top-2 -right-2 text-4xl opacity-10">☯️</span><h3 className="text-[#D4AF37] text-xs mb-4 uppercase border-b border-[#D4AF37]/30 pb-2">四柱推命</h3><p className="text-sm leading-relaxed text-purple-100/80">{currentFortune.bazi}</p></div>
-                    <div className="glass p-6 rounded-2xl relative overflow-hidden"><span className="absolute -top-2 -right-2 text-4xl opacity-10">🃏</span><h3 className="text-[#D4AF37] text-xs mb-4 uppercase border-b border-[#D4AF37]/30 pb-2">タロット</h3><p className="text-xs font-bold text-[#D4AF37] mb-2">{currentFortune.tarot.name}</p><p className="text-sm leading-relaxed text-indigo-100/80">{currentFortune.tarot.desc}</p></div>
+                    <div className="glass p-6 rounded-2xl relative overflow-hidden"><span className="absolute -top-2 -right-2 text-4xl opacity-10">🌟</span><h3 className="text-[#D4AF37] text-xs mb-4 uppercase border-b border-[#D4AF37]/30 pb-2">西洋占星術 ({fortune.zodiac.name})</h3><p className="text-sm leading-relaxed text-blue-100/80">{fortune.astrology}</p></div>
+                    <div className="glass p-6 rounded-2xl relative overflow-hidden"><span className="absolute -top-2 -right-2 text-4xl opacity-10">☯️</span><h3 className="text-[#D4AF37] text-xs mb-4 uppercase border-b border-[#D4AF37]/30 pb-2">四柱推命 ({fortune.stem.name})</h3><p className="text-sm leading-relaxed text-purple-100/80">{fortune.bazi}</p></div>
+                    <div className="glass p-6 rounded-2xl relative overflow-hidden"><span className="absolute -top-2 -right-2 text-4xl opacity-10">🃏</span><h3 className="text-[#D4AF37] text-xs mb-4 uppercase border-b border-[#D4AF37]/30 pb-2">タロット</h3><p className="text-xs font-bold text-[#D4AF37] mb-2">{fortune.tarot.name}</p><p className="text-sm leading-relaxed text-indigo-100/80">{fortune.tarot.desc}</p></div>
                 </div>
                 <div className="flex flex-col items-center gap-6">
                     <button onClick={() => setShowPremiumModal(true)} className="btn-gold px-12 py-5 rounded-full font-bold text-lg animate-pulse">さらに深く、3ヶ月後の運命を知る (プレミアム鑑定へ)</button>
@@ -205,41 +334,52 @@ function App() {
         );
     };
 
-    const renderPremiumResultView = () => (
-        <div className="max-w-4xl w-full page-enter py-20 px-6">
-            <div className="text-center mb-20">
-                <div className="inline-block px-6 py-2 rounded-full border border-[#D4AF37]/40 text-[#D4AF37] text-[10px] tracking-[0.5em] mb-6 uppercase bg-[#D4AF37]/5">Premium Reading</div>
-                <h2 className="text-5xl font-bold gold-text tracking-[0.2em] mb-6">深淵なる運命の託宣</h2>
-                <CelestialIllustration /><div className="max-w-xl mx-auto text-[#E6E6FA]/80 leading-relaxed font-light text-sm italic">{premiumData.intro}</div>
-            </div>
-            <div className="space-y-24">
-                <section>
-                    <h3 className="flex items-center gap-4 text-[#D4AF37] text-xs tracking-[0.4em] mb-8 uppercase"><span className="w-12 h-px bg-[#D4AF37]"></span>運命のバイオリズム解析</h3>
-                    <div className="glass p-10 rounded-[3rem] border-[#D4AF37]/30 border-2 overflow-hidden relative">
-                        <div className="absolute top-0 right-0 p-8 opacity-10"><svg width="100" height="100" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="none" stroke="#D4AF37" strokeWidth="1" /></svg></div>
-                        <FateRhythmChart />
-                    </div>
-                </section>
-                <section>
-                    <h3 className="flex items-center gap-4 text-[#D4AF37] text-xs tracking-[0.4em] mb-12 uppercase"><span className="w-12 h-px bg-[#D4AF37]"></span>宿命の三ヶ月年表</h3>
-                    <div className="space-y-10 relative">
-                        <div className="absolute left-[39px] top-4 bottom-4 w-px bg-white/10 hidden md:block"></div>
-                        {premiumData.monthly.map((m, idx) => (
-                            <div key={idx} className="glass p-10 rounded-3xl flex flex-col md:flex-row gap-10 items-start hover:border-[#D4AF37]/60 transition-all group">
-                                <div className="text-center md:min-w-[100px] relative">
-                                    <div className="text-[10px] opacity-40 mb-2 uppercase tracking-widest">{m.month}</div>
-                                    <div className="text-2xl gold-text font-bold mb-2 transition-transform group-hover:scale-110">{m.title}</div>
-                                    <div className="w-4 h-4 bg-[#D4AF37] rounded-full absolute -left-[54px] top-12 hidden md:block border-4 border-[#0B1021]"></div>
+    const renderPremiumResultView = () => {
+        if (!fortune) return null;
+        return (
+            <div className="max-w-4xl w-full page-enter py-20 px-6">
+                <div className="text-center mb-20">
+                    <div className="inline-block px-6 py-2 rounded-full border border-[#D4AF37]/40 text-[#D4AF37] text-[10px] tracking-[0.5em] mb-6 uppercase bg-[#D4AF37]/5">Premium Reading</div>
+                    <h2 className="text-5xl font-bold gold-text tracking-[0.2em] mb-6">深淵なる運命の託宣</h2>
+                    <CelestialIllustration /><div className="max-w-xl mx-auto text-[#E6E6FA]/80 leading-relaxed font-light text-sm italic">{fortune.premium.intro}</div>
+                </div>
+                <div className="space-y-24">
+                    <section>
+                        <h3 className="flex items-center gap-4 text-[#D4AF37] text-xs tracking-[0.4em] mb-8 uppercase"><span className="w-12 h-px bg-[#D4AF37]"></span>運命のバイオリズム解析</h3>
+                        <div className="glass p-10 rounded-[3rem] border-[#D4AF37]/30 border-2 overflow-hidden relative">
+                            <div className="absolute top-0 right-0 p-8 opacity-10"><svg width="100" height="100" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="none" stroke="#D4AF37" strokeWidth="1" /></svg></div>
+                            <FateRhythmChart seed={seed} />
+                        </div>
+                    </section>
+                    <section>
+                        <h3 className="flex items-center gap-4 text-[#D4AF37] text-xs tracking-[0.4em] mb-12 uppercase"><span className="w-12 h-px bg-[#D4AF37]"></span>宿命の三ヶ月年表</h3>
+                        <div className="space-y-10 relative">
+                            <div className="absolute left-[39px] top-4 bottom-4 w-px bg-white/10 hidden md:block"></div>
+                            {fortune.premium.monthly.map((m: any, idx: number) => (
+                                <div key={idx} className="glass p-10 rounded-3xl flex flex-col md:flex-row gap-10 items-start hover:border-[#D4AF37]/60 transition-all group">
+                                    <div className="text-center md:min-w-[100px] relative">
+                                        <div className="text-[10px] opacity-40 mb-2 uppercase tracking-widest">{m.month}</div>
+                                        <div className="text-2xl gold-text font-bold mb-2 transition-transform group-hover:scale-110">{m.title}</div>
+                                        <div className="w-4 h-4 bg-[#D4AF37] rounded-full absolute -left-[54px] top-12 hidden md:block border-4 border-[#0B1021]"></div>
+                                    </div>
+                                    <div className="flex-1 text-sm leading-[2] opacity-80">{m.desc}</div>
                                 </div>
-                                <div className="flex-1 text-sm leading-[2] opacity-80">{m.desc}</div>
-                            </div>
-                        ))}
-                    </div>
-                </section>
-                <div className="text-center"><button onClick={() => setView('top')} className="text-[10px] opacity-30 hover:opacity-100 transition-all tracking-[0.4em] uppercase border-b border-white/20 pb-2">Close Destiny Reading</button></div>
+                            ))}
+                        </div>
+                    </section>
+                    <section className="text-center">
+                        <h3 className="text-[#D4AF37] text-xs tracking-[0.4em] mb-8 uppercase">あなたのラッキーアイテム</h3>
+                        <div className="flex justify-center gap-4 flex-wrap">
+                            {fortune.luckyItems.map((item: string, i: number) => (
+                                <div key={i} className="glass px-6 py-3 rounded-full text-sm border-[#D4AF37]/30">{item}</div>
+                            ))}
+                        </div>
+                    </section>
+                    <div className="text-center"><button onClick={() => setView('top')} className="text-[10px] opacity-30 hover:opacity-100 transition-all tracking-[0.4em] uppercase border-b border-white/20 pb-2">Close Destiny Reading</button></div>
+                </div>
             </div>
-        </div>
-    );
+        );
+    };
 
     const renderPremiumModal = () => (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm page-enter">
@@ -257,11 +397,11 @@ function App() {
         <div className="relative min-h-screen flex items-center justify-center bg-[#0B1021]">
             <StarField />
             <main className="relative z-10 w-full flex justify-center items-center">
-              {view === 'top' && renderTopView()}
-              {view === 'loading' && renderLoadingView()}
-              {view === 'result' && renderResultView()}
-              {view === 'premium_result' && renderPremiumResultView()}
-              {showPremiumModal && renderPremiumModal()}
+                {view === 'top' && renderTopView()}
+                {view === 'loading' && renderLoadingView()}
+                {view === 'result' && renderResultView()}
+                {view === 'premium_result' && renderPremiumResultView()}
+                {showPremiumModal && renderPremiumModal()}
             </main>
         </div>
     );
