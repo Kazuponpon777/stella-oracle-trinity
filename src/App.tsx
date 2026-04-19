@@ -58,6 +58,54 @@ const getTenStem = (year: number) => {
     return { name: stems[stemIdx], element: elements[stemIdx] };
 };
 
+// --- Experiences / Animations ---
+
+const playMysticSound = (freq = 440, type: OscillatorType = 'sine', duration = 0.5) => {
+    try {
+        const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+
+        oscillator.type = type;
+        oscillator.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        
+        gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+        gainNode.gain.linearRampToValueAtTime(0.2, audioCtx.currentTime + 0.1);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+
+        oscillator.start();
+        oscillator.stop(audioCtx.currentTime + duration);
+    } catch (e) {
+        console.warn("Audio Context failed", e);
+    }
+};
+
+const TypeWriter = ({ text, speed = 50, delay = 0 }: { text: string, speed?: number, delay?: number }) => {
+    const [displayedText, setDisplayedText] = useState('');
+    const [started, setStarted] = useState(false);
+
+    useEffect(() => {
+        const timeout = setTimeout(() => setStarted(true), delay);
+        return () => clearTimeout(timeout);
+    }, [delay]);
+
+    useEffect(() => {
+        if (!started) return;
+        let i = 0;
+        const interval = setInterval(() => {
+            setDisplayedText(text.slice(0, i + 1));
+            i++;
+            if (i >= text.length) clearInterval(interval);
+        }, speed);
+        return () => clearInterval(interval);
+    }, [started, text, speed]);
+
+    return <span className={started ? "opacity-100 transition-opacity" : "opacity-0"}>{displayedText}</span>;
+};
+
 // --- Components ---
 
 const FateRhythmChart = ({ seed }: { seed: number }) => {
@@ -78,7 +126,7 @@ const FateRhythmChart = ({ seed }: { seed: number }) => {
     ];
 
     return (
-        <div className="w-full relative mt-6">
+        <div className="w-full relative mt-6 animate-fade-in">
             <div className="flex justify-center gap-6 mb-4 text-[11px] tracking-widest">
                 {lines.map((l, i) => (
                     <span key={i} className="flex items-center gap-2"><span className="w-3 h-3 rounded-full" style={{backgroundColor: l.color}}></span><span style={{color: l.color}} className="opacity-80">{l.label}</span></span>
@@ -98,7 +146,7 @@ const FateRhythmChart = ({ seed }: { seed: number }) => {
                         </g>
                     );
                 })}
-                {/* Data lines */}
+                {/* Data lines with animation */}
                 {lines.map((l, li) => {
                     const path = l.d.map((v, i) => {
                         const x = PAD + (cw * i) / (steps - 1);
@@ -106,7 +154,8 @@ const FateRhythmChart = ({ seed }: { seed: number }) => {
                         return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
                     }).join(' ');
                     return (
-                        <path key={li} d={path} fill="none" stroke={l.color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="chart-line" />
+                        <path key={li} d={path} fill="none" stroke={l.color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" 
+                              className="chart-line-draw" style={{ '--delay': `${li * 0.5}s` } as any} />
                     );
                 })}
             </svg>
@@ -120,22 +169,21 @@ const FiveElementsChart = ({ stem }: { stem: { name: string, element: string } }
     const radius = 60;
     
     return (
-        <div className="flex justify-center mb-8">
+        <div className="flex justify-center mb-8 animate-fade-in">
             <svg width="200" height="200" viewBox="0 0 200 200">
-                <circle cx={center} cy={center} r={radius + 10} fill="none" stroke="rgba(212,175,55,0.1)" strokeWidth="1" />
+                <circle cx={center} cy={center} r={radius + 10} fill="none" stroke="rgba(212,175,55,0.1)" strokeWidth="1" className="animate-spin-slow" />
                 {elements.map((el, i) => {
                     const angle = (i * 72 - 90) * (Math.PI / 180);
                     const x = center + radius * Math.cos(angle);
                     const y = center + radius * Math.sin(angle);
                     const isStrong = el === stem.element;
                     return (
-                        <g key={el}>
+                        <g key={el} className="element-node" style={{ '--delay': `${i * 0.1}s` } as any}>
                             <circle cx={x} cy={y} r="18" fill={isStrong ? "rgba(212,175,55,0.2)" : "rgba(255,255,255,0.05)"} stroke={isStrong ? "#D4AF37" : "rgba(212,175,55,0.3)"} strokeWidth="1" />
                             <text x={x} y={y + 5} textAnchor="middle" fill={isStrong ? "#D4AF37" : "white"} fontSize="12" fontWeight={isStrong ? "bold" : "normal"}>{el}</text>
                         </g>
                     );
                 })}
-                {/* Cycle lines */}
                 {elements.map((_, i) => {
                     const angle1 = (i * 72 - 90) * (Math.PI / 180);
                     const angle2 = (((i + 1) % 5) * 72 - 90) * (Math.PI / 180);
@@ -143,7 +191,7 @@ const FiveElementsChart = ({ stem }: { stem: { name: string, element: string } }
                     const y1 = center + (radius - 18) * Math.sin(angle1);
                     const x2 = center + (radius - 18) * Math.cos(angle2);
                     const y2 = center + (radius - 18) * Math.sin(angle2);
-                    return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="#D4AF37" opacity="0.2" strokeDasharray="2,2" />;
+                    return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="#D4AF37" opacity="0.2" strokeDasharray="2,2" className="chart-line-draw" style={{ '--delay': '1s' } as any} />;
                 })}
             </svg>
         </div>
@@ -168,7 +216,7 @@ const RadarChart = ({ seed }: { seed: number }) => {
     });
 
     return (
-        <div className="flex justify-center mb-10">
+        <div className="flex justify-center mb-10 animate-fade-in">
             <svg width="220" height="220" viewBox="0 0 200 200">
                 {[0.2, 0.4, 0.6, 0.8, 1.0].map((s, si) => (
                     <polygon key={si} points={pointsOnCircle(r * s).map(p => `${p.x},${p.y}`).join(' ')} fill="none" stroke="#D4AF37" strokeWidth="0.5" opacity={0.2} />
@@ -176,15 +224,12 @@ const RadarChart = ({ seed }: { seed: number }) => {
                 {outerPoints.map((p, i) => (
                     <line key={i} x1={cx} y1={cy} x2={p.x} y2={p.y} stroke="#D4AF37" strokeWidth="0.5" opacity={0.2} />
                 ))}
-                <polygon points={dataPoints.map(p => `${p.x},${p.y}`).join(' ')} fill="rgba(212,175,55,0.15)" stroke="#D4AF37" strokeWidth="2" />
+                <polygon points={dataPoints.map(p => `${p.x},${p.y}`).join(' ')} fill="rgba(212,175,55,0.15)" stroke="#D4AF37" strokeWidth="2" className="radar-polygon" />
                 {dataPoints.map((p, i) => (
-                    <circle key={i} cx={p.x} cy={p.y} r="4" fill="#D4AF37" />
+                    <circle key={i} cx={p.x} cy={p.y} r="4" fill="#D4AF37" className="radar-point" style={{ '--delay': `${i * 0.1}s` } as any} />
                 ))}
                 {outerPoints.map((p, i) => (
                     <text key={i} x={p.x} y={p.y + (p.y < cy ? -12 : 16)} textAnchor="middle" fill="#D4AF37" fontSize="12" fontWeight="bold">{elements[i]}</text>
-                ))}
-                {dataPoints.map((p, i) => (
-                    <text key={`v${i}`} x={p.x} y={p.y - 8} textAnchor="middle" fill="white" fontSize="9" opacity="0.7">{values[i]}%</text>
                 ))}
             </svg>
         </div>
@@ -193,7 +238,7 @@ const RadarChart = ({ seed }: { seed: number }) => {
 
 const CelestialIllustration = () => (
     <div className="flex justify-center mb-8">
-        <svg width="120" height="120" viewBox="0 0 100 100" className="opacity-40">
+        <svg width="120" height="120" viewBox="0 0 100 100" className="opacity-40 animate-pulse-slow">
             <circle cx="50" cy="50" r="45" fill="none" stroke="#D4AF37" strokeWidth="0.5" />
             <circle cx="50" cy="50" r="30" fill="none" stroke="#D4AF37" strokeWidth="0.5" strokeDasharray="2,2" />
             {[...Array(12)].map((_, i) => (<line key={i} x1="50" y1="5" x2="50" y2="15" transform={`rotate(${i * 30} 50 50)`} stroke="#D4AF37" strokeWidth="0.5" />))}
@@ -204,8 +249,31 @@ const CelestialIllustration = () => (
 );
 
 const StarField = () => {
-    const [stars] = useState(() => [...Array(100)].map((_, i) => ({ id: i, top: `${Math.random() * 100}%`, left: `${Math.random() * 100}%`, size: `${Math.random() * 2 + 1}px`, duration: `${Math.random() * 3 + 2}s` })));
-    return (<div className="star-field">{stars.map(s => <div key={s.id} className="star" style={{top: s.top, left: s.left, width: s.size, height: s.size, '--duration': s.duration} as any} />)}</div>);
+    const [stars] = useState(() => [...Array(120)].map((_, i) => ({ 
+        id: i, 
+        top: `${Math.random() * 100}%`, 
+        left: `${Math.random() * 100}%`, 
+        size: `${Math.random() * 2 + 0.5}px`, 
+        duration: `${Math.random() * 5 + 3}s`,
+        parallax: Math.random() * 20
+    })));
+    return (
+        <div className="star-field">
+            {stars.map(s => (
+                <div key={s.id} className="star" style={{
+                    top: s.top, 
+                    left: s.left, 
+                    width: s.size, 
+                    height: s.size, 
+                    '--duration': s.duration,
+                    opacity: 0.3 + Math.random() * 0.7
+                } as any} />
+            ))}
+            {/* Added meteor effect */}
+            <div className="meteor" style={{ top: '10%', left: '80%' } as any}></div>
+            <div className="meteor" style={{ top: '40%', left: '20%', animationDelay: '7s' } as any}></div>
+        </div>
+    );
 };
 
 function App() {
@@ -230,14 +298,27 @@ function App() {
         if (urlParams.get('unlock') === 'stella_premium') {
             setHasAccessKey(true);
         }
-    }, []);
+
+        // Scroll Reveal Observer
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                }
+            });
+        }, { threshold: 0.1 });
+
+        const targets = document.querySelectorAll('.reveal-on-scroll');
+        targets.forEach(t => observer.observe(t));
+
+        return () => observer.disconnect();
+    }, [view]); // Re-run when view changes (e.g. going to premium_result)
 
     const generateFortune = (currentSeed: number, theme: string) => {
         const zodiac = getZodiacSign(form.birthDate);
         const birthYear = form.birthDate ? new Date(form.birthDate).getFullYear() : 2000;
         const stem = getTenStem(birthYear);
         
-        // Add current date to seed for more variety on repeat visits
         const today = new Date();
         const dateStr = today.getFullYear().toString() + (today.getMonth() + 1).toString() + today.getDate().toString();
         const dateSeed = hashCode(dateStr);
@@ -255,7 +336,6 @@ function App() {
             luckyItemsPool[(dynamicSeed + 5) % luckyItemsPool.length]
         ];
 
-        // Premium extended data
         const zodiacElement = zodiac.element || "光";
         const stemElement = stem.element;
         const synergyData = (elementSynergyPool[zodiacElement] || elementSynergyPool["火"])[stemElement] || elementSynergyPool["火"]["木"];
@@ -264,18 +344,14 @@ function App() {
         const powerStone2 = powerStonePool[(dynamicSeed + 4) % powerStonePool.length];
         const luckyColor = luckyColorPool[dynamicSeed % luckyColorPool.length];
         const luckyDirection = luckyDirectionPool[dynamicSeed % luckyDirectionPool.length];
-
         const tarotDeep = tarotDeepPool[dynamicSeed % tarotDeepPool.length];
-
         const actions = [
             weeklyActionPool[dynamicSeed % weeklyActionPool.length],
             weeklyActionPool[(dynamicSeed + 3) % weeklyActionPool.length],
             weeklyActionPool[(dynamicSeed + 6) % weeklyActionPool.length]
         ];
-
         const soulMessage = soulMessagePool[dynamicSeed % soulMessagePool.length];
 
-        // Dynamic Timeline Generation
         const milestones = (timelineMilestonePool as any)[theme] || timelineMilestonePool.general;
         const m = milestones[dynamicSeed % milestones.length];
         const monthly = [
@@ -284,10 +360,9 @@ function App() {
             { month: "3ヶ月目", title: m.month3.title, desc: m.month3.desc }
         ];
 
-        // New Premium Data
         const cautionDay = cautionDayPool[dynamicSeed % cautionDayPool.length];
         const compatibleSign = compatibleSignPool[zodiac.name as keyof typeof compatibleSignPool] || compatibleSignPool["牡羊座"];
-        const luckyTime = luckyTimePool[today.getDay() === 0 ? 6 : today.getDay() - 1]; // Current day of week
+        const luckyTime = luckyTimePool[today.getDay() === 0 ? 6 : today.getDay() - 1];
 
         return {
             astrology: `${zodiac.name}のあなたへ。${astrology}`,
@@ -324,6 +399,8 @@ function App() {
         setFortune(generateFortune(generatedSeed, form.theme));
         
         setView('loading');
+        playMysticSound(523.25, 'sine', 1.5); // C5
+        
         const messages = ["天体の配置を解析中...", "深層命式を算出中...", "タロットの深淵へアクセス中...", "五行のバランスを計測中...", "運命の糸を統合しています..."];
         let i = 0;
         const interval = setInterval(() => {
@@ -336,7 +413,7 @@ function App() {
                     const calculatedScore = 70 + (generatedSeed % 28);
                     setScore(calculatedScore);
                     if (hasAccessKey) {
-                        setView('premium_result');
+                        setView('premium_ceremony');
                     } else {
                         setView('result');
                     }
@@ -357,7 +434,7 @@ function App() {
             )}
             <div className="text-center mb-10">
                 <div className="inline-block mb-4">
-                    <svg width="60" height="60" viewBox="0 0 100 100" fill="#D4AF37"><path d="M50 0 L60 40 L100 50 L60 60 L50 100 L40 60 L0 50 L40 40 Z"/></svg>
+                    <svg width="60" height="60" viewBox="0 0 100 100" fill="#D4AF37" className="animate-spin-slow"><path d="M50 0 L60 40 L100 50 L60 60 L50 100 L40 60 L0 50 L40 40 Z"/></svg>
                 </div>
                 <h1 className="text-4xl font-bold tracking-[0.2em] gold-text mb-2 font-cormorant">STELLA ORACLE</h1>
                 <p className="text-xs tracking-[0.4em] opacity-60">TRINITY鑑定</p>
@@ -389,6 +466,35 @@ function App() {
                 <div className="absolute inset-0 flex items-center justify-center"><div className="w-16 h-16 border-4 border-[#D4AF37] border-t-transparent rounded-full animate-spin"></div></div>
             </div>
             <p className="text-xl font-light gold-text tracking-widest transition-opacity duration-500">{loadingText}</p>
+        </div>
+    );
+
+    const renderPremiumCeremonyView = () => (
+        <div className="max-w-2xl w-full page-enter text-center px-4">
+            <h2 className="text-3xl gold-text mb-12 tracking-[0.4em] font-cormorant animate-fade-in">運命を選択してください</h2>
+            <p className="text-sm opacity-60 mb-16 tracking-widest animate-fade-in delay-500">3枚の聖なるカードに、あなたの未来が封印されています。<br/>直感に従い、1枚を選び取ってください。</p>
+            <div className="flex justify-center gap-6 md:gap-12">
+                {[0, 1, 2].map(i => (
+                    <div key={i} 
+                         onClick={() => {
+                             playMysticSound(659.25 + i * 100, 'triangle', 1); // E5...
+                             setView('premium_result');
+                         }}
+                         className="ceremony-card group cursor-pointer"
+                         style={{ '--delay': `${i * 0.2}s` } as any}>
+                        <div className="w-24 h-40 md:w-32 md:h-52 glass rounded-xl border border-[#D4AF37]/30 flex items-center justify-center transition-all group-hover:border-[#D4AF37] group-hover:scale-110 group-hover:-translate-y-4">
+                            <div className="w-full h-full p-2">
+                                <div className="w-full h-full border border-[#D4AF37]/20 rounded-lg flex items-center justify-center relative overflow-hidden">
+                                    <div className="absolute inset-0 bg-[radial-gradient(circle,#D4AF3720,transparent)]"></div>
+                                    <svg width="40" height="40" viewBox="0 0 100 100" fill="#D4AF37" opacity="0.4" className="animate-spin-slow">
+                                        <path d="M50 0 L60 40 L100 50 L60 60 L50 100 L40 60 L0 50 L40 40 Z"/>
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
         </div>
     );
 
@@ -424,253 +530,172 @@ function App() {
         return (
             <div className="max-w-4xl w-full page-enter py-20 px-6">
                 {/* Header */}
-                <div className="text-center mb-20">
+                <div className="text-center mb-20 animate-fade-in">
                     <div className="inline-block px-6 py-2 rounded-full border border-[#D4AF37]/40 text-[#D4AF37] text-[10px] tracking-[0.5em] mb-6 uppercase bg-[#D4AF37]/5">Premium Reading</div>
-                    <h2 className="text-5xl font-bold gold-text tracking-[0.2em] mb-6">深淵なる運命の託宣</h2>
+                    <h2 className="text-5xl font-bold gold-text tracking-[0.2em] mb-6 font-cormorant">深淵なる運命の託宣</h2>
                     <CelestialIllustration />
-                    <div className="max-w-xl mx-auto text-[#E6E6FA]/80 leading-relaxed font-light text-sm italic">{p.intro}</div>
+                    <div className="max-w-xl mx-auto text-[#E6E6FA]/80 leading-relaxed font-light text-sm italic h-24">
+                        <TypeWriter text={p.intro} speed={40} />
+                    </div>
                 </div>
 
-                <div className="space-y-24">
+                <div className="space-y-32">
                     {/* Section 1: Destiny Score */}
-                    <section>
-                        <h3 className="flex items-center gap-4 text-[#D4AF37] text-xs tracking-[0.4em] mb-8 uppercase"><span className="w-12 h-px bg-[#D4AF37]"></span>Destiny Score 深層解析</h3>
+                    <section className="reveal-on-scroll">
+                        <h3 className="flex items-center gap-4 text-[#D4AF37] text-xs tracking-[0.4em] mb-8 uppercase"><span className="w-12 h-px bg-[#D4AF37]"></span>Destiny Score</h3>
                         <div className="glass p-10 rounded-[3rem] border-[#D4AF37]/30 border overflow-hidden">
                             <div className="flex flex-col md:flex-row items-center gap-10">
                                 <div className="relative flex-shrink-0">
                                     <svg width="180" height="180">
                                         <circle cx="90" cy="90" r="80" fill="none" stroke="rgba(212,175,55,0.1)" strokeWidth="12" />
-                                        <circle cx="90" cy="90" r="80" fill="none" stroke="#D4AF37" strokeWidth="12" strokeLinecap="round" className="score-circle" style={{'--score': score} as any} />
+                                        <circle cx="90" cy="90" r="80" fill="none" stroke="#D4AF37" strokeWidth="12" strokeLinecap="round" className="score-circle-anim" style={{'--score': score} as any} />
                                     </svg>
                                     <div className="absolute inset-0 flex flex-col items-center justify-center">
                                         <span className="text-5xl font-bold gold-text">{score}</span>
-                                        <span className="text-[10px] opacity-60 tracking-widest">DESTINY SCORE</span>
+                                        <span className="text-[10px] opacity-60 tracking-widest">RANK {score >= 90 ? 'SSS' : score >= 80 ? 'S' : 'A'}</span>
                                     </div>
                                 </div>
-                                <div className="text-left space-y-4">
-                                    <p className="text-sm leading-relaxed opacity-80">
-                                        あなたのDestiny Scoreは <span className="text-[#D4AF37] font-bold">{score}</span> です。
-                                        {score >= 90 ? "これは極めて稀な高得点であり、宇宙があなたの味方をしている証拠です。今こそ大胆な行動を起こすべき時です。" :
-                                         score >= 80 ? "非常に恵まれた運気の中にいます。特に対人関係において、あなたの魅力が際立つ時期です。積極的に人と会うことで運命が加速します。" :
-                                         score >= 70 ? "安定した上昇気流に乗っています。焦らず着実に進むことで、確実に目標に近づいています。小さな成功体験を積み重ねてください。" :
-                                         "内省と充電の時期です。今は派手な行動よりも、自分の内面を見つめ直すことが最も効果的な開運法です。"}
+                                <div className="text-left space-y-4 flex-1">
+                                    <h4 className="text-xl gold-text font-bold mb-2">宇宙の意思との同調率</h4>
+                                    <p className="text-sm leading-relaxed opacity-80 h-20">
+                                        <TypeWriter text={
+                                            score >= 90 ? "これは極めて稀な高得点であり、宇宙があなたの味方をしている証拠です。今こそ大胆な行動を起こすべき時です。" :
+                                            score >= 80 ? "非常に恵まれた運気の中にいます。特に対人関係において、あなたの魅力が際立つ時期です。積極的に人と会うことで運命が加速します。" :
+                                            score >= 70 ? "安定した上昇気流に乗っています。焦らず着実に進むことで、確実に目標に近づいています。小さな成功体験を積み重ねてください。" :
+                                            "内省と充電の時期です。今は派手な行動よりも、自分の内面を見つめ直すことが最も効果的な開運法です。"
+                                        } delay={500} />
                                     </p>
-                                    <div className="flex gap-3 flex-wrap">
-                                        <div className="glass px-4 py-2 rounded-full text-[10px]"><span className="text-[#D4AF37]">総合力</span> {Math.min(99, score + (seed % 5))}%</div>
-                                        <div className="glass px-4 py-2 rounded-full text-[10px]"><span className="text-blue-400">直感力</span> {Math.min(99, 60 + (seed % 35))}%</div>
-                                        <div className="glass px-4 py-2 rounded-full text-[10px]"><span className="text-purple-400">魅力度</span> {Math.min(99, 65 + (seed % 30))}%</div>
-                                    </div>
                                 </div>
                             </div>
                         </div>
                     </section>
 
                     {/* Section 2: Biorhythm */}
-                    <section>
-                        <h3 className="flex items-center gap-4 text-[#D4AF37] text-xs tracking-[0.4em] mb-8 uppercase"><span className="w-12 h-px bg-[#D4AF37]"></span>運命のバイオリズム解析</h3>
+                    <section className="reveal-on-scroll">
+                        <h3 className="flex items-center gap-4 text-[#D4AF37] text-xs tracking-[0.4em] mb-8 uppercase"><span className="w-12 h-px bg-[#D4AF37]"></span>運命のバイオリズム</h3>
                         <div className="glass p-10 rounded-[3rem] border-[#D4AF37]/30 border overflow-hidden relative">
                             <FateRhythmChart seed={seed} />
-                            <div className="mt-8 text-sm leading-relaxed opacity-70 text-left">
-                                <p>このバイオリズムチャートは、あなたの「運命の種（Seed値）」から算出された固有の波形です。黄金のラインは魂のエネルギー波動、青のラインは知性の潮流、紫のラインは愛の共鳴を示しています。3つのラインが交差するポイントが、特に重要な転機となります。</p>
-                            </div>
-                        </div>
-                    </section>
-
-                    {/* Section 3: Element Synergy */}
-                    <section>
-                        <h3 className="flex items-center gap-4 text-[#D4AF37] text-xs tracking-[0.4em] mb-8 uppercase"><span className="w-12 h-px bg-[#D4AF37]"></span>エレメント・シナジー（相性解析）</h3>
-                        <div className="glass p-10 rounded-[3rem] border-[#D4AF37]/30 border overflow-hidden">
-                            <FiveElementsChart stem={fortune.stem} />
-                            <div className="space-y-6 text-left">
-                                <div className="glass p-6 rounded-2xl border-white/5 bg-white/5">
-                                    <h4 className="text-[#D4AF37] font-bold text-sm mb-2">{fortune.zodiac.name}（{fortune.zodiac.element}）× {fortune.stem.name}（{fortune.stem.element}）</h4>
-                                    <p className="text-sm leading-relaxed opacity-80">{p.synergy.synergy}</p>
-                                </div>
-                                <div className="p-6 border-l-2 border-[#D4AF37]">
-                                    <h4 className="text-[10px] uppercase tracking-widest opacity-50 mb-2">天からの助言</h4>
-                                    <p className="text-sm font-medium">{p.synergy.advice}</p>
-                                </div>
+                            <div className="mt-8 text-sm leading-relaxed opacity-70 text-left border-t border-white/5 pt-6">
+                                <p className="mb-2 text-[#D4AF37] text-xs tracking-widest uppercase">波動値の交差ポイントに注目</p>
+                                <p className="text-xs">この波形は、占星術のトランジット（惑星の運行）に基づき算出された固有のバイオリズムです。ラインが重なり、上昇するポイントが大きな好機となります。</p>
                             </div>
                         </div>
                     </section>
 
                     {/* Section 4: Deep Tarot */}
-                    <section>
-                        <h3 className="flex items-center gap-4 text-[#D4AF37] text-xs tracking-[0.4em] mb-8 uppercase"><span className="w-12 h-px bg-[#D4AF37]"></span>タロット・ディープリーディング</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <div className="glass p-8 rounded-3xl border-white/5 bg-white/5 text-left">
-                                <div className="text-[10px] opacity-40 mb-4 uppercase tracking-tighter">Past / 起源</div>
-                                <p className="text-sm leading-relaxed">{p.tarotDeep.past}</p>
-                            </div>
-                            <div className="glass p-8 rounded-3xl border-[#D4AF37]/30 border bg-[#D4AF37]/5 text-left">
-                                <div className="text-[10px] gold-text mb-4 uppercase tracking-tighter">Present / 現在</div>
-                                <p className="text-sm leading-relaxed">{p.tarotDeep.present}</p>
-                            </div>
-                            <div className="glass p-8 rounded-3xl border-white/5 bg-white/5 text-left">
-                                <div className="text-[10px] opacity-40 mb-4 uppercase tracking-tighter">Future / 到達</div>
-                                <p className="text-sm leading-relaxed">{p.tarotDeep.future}</p>
-                            </div>
+                    <section className="reveal-on-scroll">
+                        <h3 className="flex items-center gap-4 text-[#D4AF37] text-xs tracking-[0.4em] mb-8 uppercase"><span className="w-12 h-px bg-[#D4AF37]"></span>タロット・深淵読解</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                            {[
+                                { label: 'Origin', title: '過去 / 起源', text: p.tarotDeep.past, icon: '🌘' },
+                                { label: 'Core', title: '現在 / 中軸', text: p.tarotDeep.present, icon: '🌕', active: true },
+                                { label: 'Gate', title: '未来 / 到達', text: p.tarotDeep.future, icon: '🌖' }
+                            ].map((card, i) => (
+                                <div key={i} className={`glass p-8 rounded-3xl text-left transition-all hover:scale-105 ${card.active ? 'border-[#D4AF37]/50 ring-1 ring-[#D4AF37]/20 shadow-[0_0_30px_rgba(212,175,55,0.1)]' : 'border-white/5'}`}>
+                                    <div className="flex justify-between items-center mb-6">
+                                        <span className="text-2xl">{card.icon}</span>
+                                        <span className="text-[10px] opacity-40 uppercase tracking-tighter">{card.label}</span>
+                                    </div>
+                                    <h4 className={`text-sm font-bold mb-4 ${card.active ? 'gold-text' : 'opacity-60'}`}>{card.title}</h4>
+                                    <p className="text-sm leading-loose opacity-80 min-h-[120px]">
+                                        <TypeWriter text={card.text} delay={i * 1000 + 1000} speed={30} />
+                                    </p>
+                                </div>
+                            ))}
                         </div>
                     </section>
 
-                    {/* Section 5: Radar Chart */}
-                    <section>
-                        <h3 className="flex items-center gap-4 text-[#D4AF37] text-xs tracking-[0.4em] mb-8 uppercase"><span className="w-12 h-px bg-[#D4AF37]"></span>鑑定レーダーチャート</h3>
-                        <div className="glass p-10 rounded-[3rem] border-[#D4AF37]/30 border">
-                            <RadarChart seed={seed} />
-                            <div className="text-xs opacity-50 italic">※このチャートは、天体の角度と命式の強弱から算出された、あなたの現在のポテンシャル分布です。</div>
-                        </div>
-                    </section>
+                    {/* Section 5: Radar & Elements */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 reveal-on-scroll">
+                        <section>
+                            <h3 className="flex items-center gap-4 text-[#D4AF37] text-xs tracking-[0.4em] mb-8 uppercase"><span className="w-12 h-px bg-[#D4AF37]"></span>ポテンシャル解析</h3>
+                            <div className="glass p-10 rounded-[3rem] border-[#D4AF37]/30 border h-full">
+                                <RadarChart seed={seed} />
+                            </div>
+                        </section>
+                        <section>
+                            <h3 className="flex items-center gap-4 text-[#D4AF37] text-xs tracking-[0.4em] mb-8 uppercase"><span className="w-12 h-px bg-[#D4AF37]"></span>エレメント共鳴</h3>
+                            <div className="glass p-10 rounded-[3rem] border-[#D4AF37]/30 border h-full flex flex-col justify-center">
+                                <FiveElementsChart stem={fortune.stem} />
+                                <div className="text-left space-y-4">
+                                    <div className="p-4 rounded-xl bg-white/5 border border-white/5">
+                                        <p className="text-xs leading-relaxed opacity-80">{p.synergy.synergy}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+                    </div>
 
                     {/* Section 6: Timeline */}
-                    <section>
-                        <h3 className="flex items-center gap-4 text-[#D4AF37] text-xs tracking-[0.4em] mb-8 uppercase"><span className="w-12 h-px bg-[#D4AF37]"></span>これからの3ヶ月の航路</h3>
-                        <div className="space-y-4">
-                            {p.monthly.map((m: any, i: number) => (
-                                <div key={i} className="glass p-8 rounded-3xl flex flex-col md:flex-row gap-6 items-center text-left border-white/5 hover:border-[#D4AF37]/30 transition-all">
-                                    <div className="w-24 flex-shrink-0">
-                                        <div className="text-[10px] opacity-40 uppercase mb-1">{m.month}</div>
-                                        <div className="text-lg gold-text font-bold">{m.title}</div>
-                                    </div>
-                                    <div className="flex-1 text-sm leading-[2] opacity-80">{m.desc}</div>
-                                </div>
-                            ))}
-                        </div>
-                    </section>
-
-                    {/* Section 7: Weekly Actions */}
-                    <section>
-                        <h3 className="flex items-center gap-4 text-[#D4AF37] text-xs tracking-[0.4em] mb-8 uppercase"><span className="w-12 h-px bg-[#D4AF37]"></span>今週の開運アクション</h3>
-                        <div className="space-y-6">
-                            {p.actions.map((a: any, i: number) => (
-                                <div key={i} className="glass p-8 rounded-3xl border-[#D4AF37]/20 border hover:border-[#D4AF37]/40 transition-all text-left">
-                                    <div className="flex items-start gap-4">
-                                        <div className="w-10 h-10 rounded-full bg-[#D4AF37]/10 flex items-center justify-center flex-shrink-0">
-                                            <span className="text-[#D4AF37] font-bold">{i + 1}</span>
+                    <section className="reveal-on-scroll">
+                        <h3 className="flex items-center gap-4 text-[#D4AF37] text-xs tracking-[0.4em] mb-8 uppercase"><span className="w-12 h-px bg-[#D4AF37]"></span>3ヶ月の航海図</h3>
+                        <div className="relative">
+                            <div className="absolute left-10 top-8 bottom-8 w-px bg-gradient-to-b from-[#D4AF37] via-[#D4AF37]/20 to-transparent hidden md:block"></div>
+                            <div className="space-y-8">
+                                {p.monthly.map((m: any, i: number) => (
+                                    <div key={i} className="glass p-8 rounded-3xl flex flex-col md:flex-row gap-8 items-start text-left border-white/5 ml-0 md:ml-6 relative">
+                                        <div className="absolute left-[-22px] top-10 w-4 h-4 rounded-full bg-[#0B1021] border-2 border-[#D4AF37] hidden md:block"></div>
+                                        <div className="w-32 flex-shrink-0">
+                                            <div className="text-[10px] gold-text opacity-50 uppercase mb-1 tracking-[0.2em]">{m.month}</div>
+                                            <div className="text-xl gold-text font-bold font-cormorant">{m.title}</div>
                                         </div>
-                                        <div>
-                                            <h4 className="text-[#D4AF37] font-bold text-sm mb-2">{a.action}</h4>
-                                            <p className="text-sm leading-relaxed opacity-70">{a.reason}</p>
+                                        <div className="flex-1 text-sm leading-[2.2] opacity-80 h-24">
+                                            <TypeWriter text={m.desc} delay={i * 800 + 4000} speed={30} />
                                         </div>
                                     </div>
-                                </div>
-                            ))}
-                        </div>
-                    </section>
-
-                    {/* Section 8: Lucky Items & Power Stones */}
-                    <section>
-                        <h3 className="flex items-center gap-4 text-[#D4AF37] text-xs tracking-[0.4em] mb-8 uppercase"><span className="w-12 h-px bg-[#D4AF37]"></span>開運アイテム・エネルギーマップ</h3>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                            {p.powerStones.map((stone: any, i: number) => (
-                                <div key={i} className="glass p-8 rounded-3xl border-[#D4AF37]/20 border text-left flex items-start gap-4">
-                                    <div className="w-12 h-12 rounded-full flex-shrink-0 flex items-center justify-center" style={{ background: `radial-gradient(circle, ${stone.color}40, ${stone.color}10)`, border: `2px solid ${stone.color}60` }}>
-                                        <span className="text-lg">💎</span>
-                                    </div>
-                                    <div>
-                                        <h4 className="text-[#D4AF37] font-bold text-sm mb-1">{stone.name}</h4>
-                                        <p className="text-xs opacity-70">{stone.desc}</p>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                            <div className="glass p-8 rounded-3xl border-[#D4AF37]/20 border text-left">
-                                <h4 className="text-[#D4AF37] text-xs mb-4 uppercase tracking-widest">🎨 ラッキーカラー</h4>
-                                <div className="flex items-center gap-4 mb-3">
-                                    <div className="w-10 h-10 rounded-full border-2 border-white/20" style={{ backgroundColor: p.luckyColor.hex }}></div>
-                                    <div>
-                                        <div className="text-sm font-bold">{p.luckyColor.name}</div>
-                                        <div className="text-[10px] opacity-50">{p.luckyColor.hex}</div>
-                                    </div>
-                                </div>
-                                <p className="text-xs opacity-70 leading-relaxed">{p.luckyColor.meaning}</p>
-                            </div>
-                            <div className="glass p-8 rounded-3xl border-[#D4AF37]/20 border text-left">
-                                <h4 className="text-[#D4AF37] text-xs mb-4 uppercase tracking-widest">🧭 開運の方角</h4>
-                                <div className="text-2xl gold-text font-bold mb-3">{p.luckyDirection.name}</div>
-                                <p className="text-xs opacity-70 leading-relaxed">{p.luckyDirection.desc}</p>
-                            </div>
-                        </div>
-
-                        <div className="text-center">
-                            <h4 className="text-[#D4AF37] text-xs tracking-[0.4em] mb-6 uppercase">ラッキーアイテム</h4>
-                            <div className="flex justify-center gap-4 flex-wrap">
-                                {fortune.luckyItems.map((item: string, i: number) => (
-                                    <div key={i} className="glass px-6 py-3 rounded-full text-sm border-[#D4AF37]/30">{item}</div>
                                 ))}
                             </div>
                         </div>
                     </section>
 
-                    {/* NEW Section 9: Special Insights */}
-                    <section>
-                        <h3 className="flex items-center gap-4 text-[#D4AF37] text-xs tracking-[0.4em] mb-8 uppercase"><span className="w-12 h-px bg-[#D4AF37]"></span>深層鑑定・特別インサイト</h3>
+                    {/* Section 9: Special Insights */}
+                    <section className="reveal-on-scroll">
+                        <h3 className="flex items-center gap-4 text-[#D4AF37] text-xs tracking-[0.4em] mb-8 uppercase"><span className="w-12 h-px bg-[#D4AF37]"></span>深層インサイト</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {/* Caution Day */}
-                            <div className="glass p-8 rounded-3xl border-[#D4AF37]/20 border text-left">
-                                <h4 className="text-[#D4AF37] text-xs mb-4 uppercase tracking-widest flex items-center gap-2">⚠️ 今月の注意日 - {p.cautionDay.day}</h4>
-                                <div className="text-sm font-bold mb-2">タイプ：{p.cautionDay.type}</div>
-                                <p className="text-xs opacity-70 leading-relaxed">{p.cautionDay.advice}</p>
-                            </div>
-                            {/* Lucky Time */}
-                            <div className="glass p-8 rounded-3xl border-[#D4AF37]/20 border text-left">
-                                <h4 className="text-[#D4AF37] text-xs mb-4 uppercase tracking-widest flex items-center gap-2">🕒 本日のラッキータイム</h4>
-                                <div className="text-sm font-bold mb-2 text-[#D4AF37]">{p.luckyTime.day} / {p.luckyTime.time}</div>
-                                <p className="text-xs opacity-70 leading-relaxed">{p.luckyTime.desc}</p>
-                            </div>
-                        </div>
-                        
-                        {/* Compatible Signs */}
-                        <div className="glass p-8 rounded-3xl border-[#D4AF37]/20 border text-left mt-6">
-                            <h4 className="text-[#D4AF37] text-xs mb-6 uppercase tracking-widest">💠 相性の良い運命の星座</h4>
-                            <div className="space-y-6">
+                            <div className="glass p-8 rounded-3xl border-[#D4AF37]/20 border text-left flex gap-6 items-center">
+                                <div className="text-4xl">⚠️</div>
                                 <div>
-                                    <div className="text-[10px] opacity-50 mb-2 uppercase tracking-tighter">Best Resonance (最高)</div>
-                                    <div className="flex gap-4">
-                                        {p.compatibleSign.best.map((s: string) => (
-                                            <div key={s} className="px-4 py-2 bg-[#D4AF37]/10 rounded-lg text-sm font-bold gold-text border border-[#D4AF37]/30">{s}</div>
-                                        ))}
-                                    </div>
+                                    <h4 className="text-[#D4AF37] text-xs mb-2 uppercase tracking-widest">今月の注意日 ({p.cautionDay.day})</h4>
+                                    <p className="text-sm font-bold mb-1">{p.cautionDay.type}</p>
+                                    <p className="text-[11px] opacity-60 leading-relaxed">{p.cautionDay.advice}</p>
                                 </div>
+                            </div>
+                            <div className="glass p-8 rounded-3xl border-[#D4AF37]/20 border text-left flex gap-6 items-center">
+                                <div className="text-4xl">🕒</div>
                                 <div>
-                                    <div className="text-[10px] opacity-50 mb-2 uppercase tracking-tighter">Good Harmony (良好)</div>
-                                    <div className="flex gap-4 flex-wrap">
-                                        {p.compatibleSign.good.map((s: string) => (
-                                            <div key={s} className="px-4 py-2 bg-white/5 rounded-lg text-sm border border-white/10">{s}</div>
-                                        ))}
-                                    </div>
+                                    <h4 className="text-[#D4AF37] text-xs mb-2 uppercase tracking-widest">本日のラッキータイム</h4>
+                                    <p className="text-sm font-bold mb-1 text-[#D4AF37]">{p.luckyTime.time}</p>
+                                    <p className="text-[11px] opacity-60 leading-relaxed">{p.luckyTime.desc}</p>
                                 </div>
-                                <p className="text-xs opacity-70 leading-relaxed italic border-t border-white/10 pt-4 mt-4 text-[#D4AF37]">{p.compatibleSign.advice}</p>
                             </div>
                         </div>
                     </section>
 
                     {/* Section 10: Soul Message */}
-                    <section className="text-center">
-                        <h3 className="text-[#D4AF37] text-xs tracking-[0.4em] mb-8 uppercase">✨ 魂からのメッセージ</h3>
-                        <div className="glass p-12 rounded-[3rem] border-[#D4AF37] border max-w-2xl mx-auto relative overflow-hidden">
-                            <div className="absolute top-4 right-4 text-6xl opacity-5">✨</div>
-                            <div className="absolute bottom-4 left-4 text-6xl opacity-5">🔱</div>
-                            <p className="text-lg leading-[2.5] font-light italic gold-text">{p.soulMessage}</p>
+                    <section className="text-center pt-20 reveal-on-scroll">
+                        <div className="glass p-16 rounded-[4rem] border-[#D4AF37] border-2 max-w-2xl mx-auto shadow-[0_0_100px_rgba(212,175,55,0.05)] relative overflow-hidden">
+                            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#D4AF37] to-transparent"></div>
+                            <p className="text-2xl leading-[2.5] font-light italic gold-text font-cormorant mb-12">
+                                <TypeWriter text={p.soulMessage} delay={8000} speed={80} />
+                            </p>
+                            <div className="text-[10px] opacity-30 tracking-[1em] uppercase">- Final Oracle -</div>
                         </div>
                     </section>
 
-                    {/* Close button */}
-                    <div className="text-center"><button onClick={() => setView('top')} className="text-[10px] opacity-30 hover:opacity-100 transition-all tracking-[0.4em] uppercase border-b border-white/20 pb-2">Close Destiny Reading</button></div>
+                    {/* Footer */}
+                    <div className="text-center pb-20"><button onClick={() => setView('top')} className="text-[10px] opacity-30 hover:opacity-100 transition-all tracking-[0.4em] uppercase border-b border-white/20 pb-2">Close Destiny Reading</button></div>
                 </div>
             </div>
         );
     };
 
     return (
-        <div className="relative min-h-screen flex items-center justify-center bg-[#0B1021]">
+        <div className="relative min-h-screen flex items-center justify-center bg-[#0B1021] overflow-x-hidden">
             <StarField />
             <main className="relative z-10 w-full flex justify-center items-center">
                 {view === 'top' && renderTopView()}
                 {view === 'loading' && renderLoadingView()}
+                {view === 'premium_ceremony' && renderPremiumCeremonyView()}
                 {view === 'result' && renderResultView()}
                 {view === 'premium_result' && renderPremiumResultView()}
             </main>
