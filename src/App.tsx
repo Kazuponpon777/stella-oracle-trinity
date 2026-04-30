@@ -279,8 +279,17 @@ const StarField = () => {
 function App() {
     const [view, setView] = useState('top'); 
     const [form, setForm] = useState(() => {
-        const saved = localStorage.getItem('stella_oracle_form');
-        return saved ? JSON.parse(saved) : { name: '', birthDate: '', birthTime: '', theme: 'general' };
+        const savedStr = localStorage.getItem('stella_oracle_form');
+        let saved = savedStr ? JSON.parse(savedStr) : null;
+        if (saved && saved.birthDate && !saved.birthYear) {
+            const parts = saved.birthDate.split('-');
+            if (parts.length >= 3) {
+                saved.birthYear = parts[0];
+                saved.birthMonth = String(parseInt(parts[1], 10));
+                saved.birthDay = String(parseInt(parts[2], 10));
+            }
+        }
+        return { name: '', birthYear: '1990', birthMonth: '1', birthDay: '1', birthTime: '', theme: 'general', ...saved };
     });
 
     const [seed, setSeed] = useState(0);
@@ -315,8 +324,9 @@ function App() {
     }, [view]); // Re-run when view changes (e.g. going to premium_result)
 
     const generateFortune = (currentSeed: number, theme: string) => {
-        const zodiac = getZodiacSign(form.birthDate);
-        const birthYear = form.birthDate ? new Date(form.birthDate).getFullYear() : 2000;
+        const birthDateStr = `${form.birthYear}/${form.birthMonth}/${form.birthDay}`;
+        const zodiac = getZodiacSign(birthDateStr);
+        const birthYear = parseInt(form.birthYear, 10) || 2000;
         const stem = getTenStem(birthYear);
         
         const today = new Date();
@@ -389,12 +399,12 @@ function App() {
     };
 
     const startFortune = () => {
-        if (!form.name || !form.birthDate) {
+        if (!form.name || !form.birthYear || !form.birthMonth || !form.birthDay) {
             alert('お名前と生年月日を入力してください。');
             return;
         }
         
-        const generatedSeed = hashCode(form.name + form.birthDate + form.birthTime);
+        const generatedSeed = hashCode(form.name + form.birthYear + form.birthMonth + form.birthDay + form.birthTime);
         setSeed(generatedSeed);
         setFortune(generateFortune(generatedSeed, form.theme));
         
@@ -441,9 +451,37 @@ function App() {
             </div>
             <div className="glass rounded-[2rem] p-8 space-y-6">
                 <input type="text" placeholder="お名前" className="w-full bg-white/5 border border-white/10 p-4 rounded-xl focus:outline-none focus:border-[#D4AF37]" value={form.name} onChange={(e) => setForm({...form, name: e.target.value})} />
-                <div className="grid grid-cols-2 gap-4">
-                    <input type="date" className="bg-white/5 border border-white/10 p-4 rounded-xl text-sm" value={form.birthDate} onChange={(e) => setForm({...form, birthDate: e.target.value})} />
-                    <input type="time" className="bg-white/5 border border-white/10 p-4 rounded-xl text-sm" value={form.birthTime} onChange={(e) => setForm({...form, birthTime: e.target.value})} />
+                <div className="grid grid-cols-3 gap-2">
+                    <div className="relative">
+                        <select className="w-full bg-white/5 border border-white/10 p-4 rounded-xl text-sm appearance-none outline-none focus:border-[#D4AF37]" value={form.birthYear} onChange={(e) => setForm({...form, birthYear: e.target.value})}>
+                            <option value="" disabled>年</option>
+                            {Array.from({length: 100}, (_, i) => new Date().getFullYear() - i).map(y => (
+                                <option key={y} value={y}>{y}年</option>
+                            ))}
+                        </select>
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-[#D4AF37]/50">▼</div>
+                    </div>
+                    <div className="relative">
+                        <select className="w-full bg-white/5 border border-white/10 p-4 rounded-xl text-sm appearance-none outline-none focus:border-[#D4AF37]" value={form.birthMonth} onChange={(e) => setForm({...form, birthMonth: e.target.value})}>
+                            <option value="" disabled>月</option>
+                            {Array.from({length: 12}, (_, i) => i + 1).map(m => (
+                                <option key={m} value={m}>{m}月</option>
+                            ))}
+                        </select>
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-[#D4AF37]/50">▼</div>
+                    </div>
+                    <div className="relative">
+                        <select className="w-full bg-white/5 border border-white/10 p-4 rounded-xl text-sm appearance-none outline-none focus:border-[#D4AF37]" value={form.birthDay} onChange={(e) => setForm({...form, birthDay: e.target.value})}>
+                            <option value="" disabled>日</option>
+                            {Array.from({length: 31}, (_, i) => i + 1).map(d => (
+                                <option key={d} value={d}>{d}日</option>
+                            ))}
+                        </select>
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-[#D4AF37]/50">▼</div>
+                    </div>
+                </div>
+                <div className="relative">
+                    <input type="time" className="w-full bg-white/5 border border-white/10 p-4 rounded-xl text-sm outline-none focus:border-[#D4AF37]" value={form.birthTime} onChange={(e) => setForm({...form, birthTime: e.target.value})} />
                 </div>
                 <select className="w-full bg-white/5 border border-white/10 p-4 rounded-xl appearance-none cursor-pointer" value={form.theme} onChange={(e: any) => setForm({...form, theme: e.target.value})}>
                     <option value="general">総合運勢</option>
